@@ -1,2 +1,13 @@
-/.stylegan2-cache/
-__pycache__/
+/test-faces/
+/train-faces/
+/val-faces/
+/venv/
+/train-pairs.csv
+/test_competition.xlsx
+/test-labels.xlsx
+/test.jpg.jpg
+/train-pairs-updated.xlsx
+/StyleGAN2ADA.py
+/.idea/
+/stylegan/metrics/cache/
+/stylegan/metrics/cache/
