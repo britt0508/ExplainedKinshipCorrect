@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name='ExplainedKinshipCorrect',
     version='3.14',
-    packages=['dnnlib', 'dnnlib.tflib', 'dnnlib.submission', 'metrics', 'training', 'tflib', 'submission'],
+    packages=['dnnlib', 'dnnlib.tflib', 'dnnlib.submission', 'metrics', 'training'],
     package_dir={'': 'stylegan'},
     url='',
     license='',
