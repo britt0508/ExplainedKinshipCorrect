@@ -198,8 +198,8 @@ def get_features(p, ptype):
     # classifier = pickle.load(classifier_urls[0])
     # result_dict = dict()
     no_urls = len(classifier_urls)
-    image_path = BASE_PATH + "/train-faces/" + p
-    image_small = cv2.imread("C:/Users/Gebruiker/PycharmProjects/ExplainedKinship/train-faces/F0001/MID1/P00001_face0.jpg")
+    # image_path = BASE_PATH + "/train-faces/" + p
+    image_small = cv2.imread("/content/drive/MyDrive/ExplainedKinship/train-faces/F0001/MID1/P00001_face0.jpg")
     print(image_small.shape)
     # if image.shape[2] > 256:
     #     factor = image.shape[2] // 256
@@ -215,7 +215,6 @@ def get_features(p, ptype):
     # cv2.imshow('image small', image_small)
     # cv2.imshow('image', image)
     # cv2.waitKey(0)
-
 
     for index in range(no_urls):
         classifier = load_pkl(classifier_urls[index])
@@ -262,3 +261,5 @@ def get_features(p, ptype):
     # images = Gs_clone.get_output_for(latents, None, is_validation=True, randomize_noise=True)
     # images = tflib.convert_images_to_uint8(images)
     # result_expr.append(inception_clone.get_output_for(images))
+
+get_features("p", "fs")
