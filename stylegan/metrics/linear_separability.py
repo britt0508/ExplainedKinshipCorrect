@@ -21,6 +21,10 @@ from stylegan import config
 from stylegan.metrics import metric_base
 from stylegan.training import misc
 
+import sys
+sys.path.append("/content/ExplainedKinshipCorrect/stylegan/")
+
+
 BASE_PATH = "C:/Users/Gebruiker/PycharmProjects/ExplainedKinship"
 #----------------------------------------------------------------------------
 
@@ -190,6 +194,7 @@ def open_file_or_url(file_or_url):
 
 def load_pkl(file_or_url):
     with open_file_or_url(file_or_url) as file:
+        dnnlib.tflib.init_tf()
         return pickle.load(file, encoding='latin1')
 
 
@@ -199,7 +204,7 @@ def get_features(p, ptype):
     # result_dict = dict()
     no_urls = len(classifier_urls)
     # image_path = BASE_PATH + "/train-faces/" + p
-    image_small = cv2.imread("/content/drive/MyDrive/ExplainedKinshipData/data/train-faces/F0001/MID1/P00001_face0.jpg")
+    image_small = cv2.imread("/content/drive/MyDrive/ExplainedKinshipData/data/train-faces/F0015/MID1/P00148_face3.jpg")
     print(image_small.shape)
     # if image.shape[2] > 256:
     #     factor = image.shape[2] // 256
@@ -224,7 +229,8 @@ def get_features(p, ptype):
         print(image.shape)
 
         # Dimension 1 in both shapes must be equal, but are 256 and 3. Shapes are [1,256,256,3] and [?,3,256,256].
-        image = tf.transpose(image, [0, 2, 3, 1])
+        # image = tf.transpose(image, [0, 2, 3, 1])
+        # print(image.shape)
 
         # The Conv2D op currently only supports the NHWC tensor format on the CPU. The op was given the format: NCHW
         # data_format='NCHW'
@@ -235,12 +241,27 @@ def get_features(p, ptype):
         print(logits)
         print("Yay")
         predictions = tf.nn.softmax(tf.concat([logits, -logits], axis=1))
-        # result_dict[url] = predictions
-        print(predictions.op)
+
+        acc_bool = tf.equal(tf.argmax(logits, 1), tf.argmax(y, 1))
+        acc_Num = tf.cast(acc_bool, tf.float32)
+        acc_Mean = tf.reduce_mean(acc_Num)
+
+        result_dict = []
+        result_dict.append(predictions)
+        pred = []
+        pred.append(result_dict)
+        # print(predictions.op)
 
         # predicted_indices = tf.argmax(predictions, 1)
         # print(predicted_indices)
         # predicted_class = tf.gather(TARGET_LABELS, predicted_indices)
+
+        # Sampling loop.
+        # results = []
+        # for _ in range(0, self.num_samples, minibatch_size):
+        #     results += tflib.run(result_expr)
+        # results = {key: np.concatenate([value[key] for value in results], axis=0) for key in results[0].keys()}
+
 
         results = []
         results += tflib.run(predictions)
