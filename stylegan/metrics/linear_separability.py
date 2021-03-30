@@ -11,8 +11,8 @@ from collections import defaultdict
 import numpy as np
 import sklearn.svm
 import tensorflow as tf
-import dnnlib.tflib as tflib
-import dnnlib
+import stylegan.dnnlib.tflib as tflib
+import stylegan.dnnlib as dnnlib
 import pickle
 import cv2.cv2 as cv2
 
@@ -199,7 +199,7 @@ def get_features(p, ptype):
     # result_dict = dict()
     no_urls = len(classifier_urls)
     # image_path = BASE_PATH + "/train-faces/" + p
-    image_small = cv2.imread("/content/drive/MyDrive/ExplainedKinship/train-faces/F0001/MID1/P00001_face0.jpg")
+    image_small = cv2.imread("/content/drive/MyDrive/ExplainedKinshipData/data/train-faces/F0001/MID1/P00001_face0.jpg")
     print(image_small.shape)
     # if image.shape[2] > 256:
     #     factor = image.shape[2] // 256

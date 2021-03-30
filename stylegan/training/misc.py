@@ -14,7 +14,7 @@ import re
 import numpy as np
 from collections import defaultdict
 import PIL.Image
-import dnnlib
+import stylegan.dnnlib as dnnlib
 
 from stylegan import config
 from stylegan.training import dataset
