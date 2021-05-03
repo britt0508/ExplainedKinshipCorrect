@@ -223,6 +223,8 @@ def get_features(p, ptype):
     # cv2.imshow('image', image)
     # cv2.waitKey(0)
 
+    results = []
+
     for i in range(no_urls):
         classifier = load_pkl(classifier_urls[i])
         # print(tf.rank(image, name=None))
@@ -264,14 +266,9 @@ def get_features(p, ptype):
         #     results += tflib.run(result_expr)
         # results = {key: np.concatenate([value[key] for value in results], axis=0) for key in results[0].keys()}
 
-
-        results = []
-        results += tflib.run(result_dict)
-        print(results)
-        results = {key: np.concatenate([value[key] for value in results], axis=0) for key in results[0].keys()}
-
-        # results = tflib.run(predictions)
-        # print(results)
+        results += tflib.run(result_dict)[0].to_list()
+        # results = {key: np.concatenate([value[key] for value in results], axis=0) for key in results[0].keys()}
+    print(results)
 
     # Shapes:
     # Tensor("celebahq-classifier-04-young_1/images_in:0", shape=(256, 256, 3), dtype=uint8)
