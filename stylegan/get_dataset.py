@@ -4,7 +4,7 @@ from stylegan.metrics import linear_separability
 
 
 def get_data():
-    df_pairs = pd.read_csv("C:/Users/Gebruiker/PycharmProjects/ExplainedKinship/train-pairs.csv")
+    df_pairs = pd.read_csv("/content/drive/MyDrive/ExplainedKinshipData/data/train-pairs.csv")
     print(df_pairs)
     features = []
     for pair in df_pairs:
@@ -13,4 +13,5 @@ def get_data():
         features.append([current_features_1, current_features_2])
 
     df_pairs.insert(-1, "features", features, True)
+    print(df_pairs)
     return df_pairs
