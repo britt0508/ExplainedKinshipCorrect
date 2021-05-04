@@ -204,10 +204,10 @@ def get_features(p, ptype):
     # result_dict = dict()
     no_urls = len(classifier_urls)
     # image_path = BASE_PATH + "/train-faces/" + p
-    # image_small = cv2.imread("/content/drive/MyDrive/ExplainedKinshipData/data/train-faces/F0001/MID1/P00001_face0.jpg")
-    image = cv2.imread("/content/example.jpg")
-    norm_image = cv2.normalize(image, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-    print(norm_image.shape)
+    image = cv2.imread("/content/drive/MyDrive/ExplainedKinshipData/data/train-faces/F0001/MID1/P00001_face0.jpg")
+    # image = cv2.imread("/content/example.jpg")
+    image = cv2.normalize(image, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+    print(image.shape)
     # if image.shape[2] > 256:
     #     factor = image.shape[2] // 256
     #     image = tf.reshape(image, [-1, image.shape[1], image.shape[2] // factor, factor, image.shape[3] // factor, factor])
@@ -217,10 +217,10 @@ def get_features(p, ptype):
     # top, bottom, left, right = 66, 66, 74, 74
 
     # image = cv2.copyMakeBorder(image, top, bottom, left, right, cv2.BORDER_CONSTANT)
-    image = cv2.resize(norm_image, (256, 256))
+    image = cv2.resize(image, (256, 256), interpolation = cv2.INTER_AREA)
     image = np.array(image)
     print(image.shape)
-    image = np.expand_dims(norm_image.T, axis=0)
+    image = np.expand_dims(image.T, axis=0)
     print(image.shape)
     # cv2.imshow('image small', image_small)
     # cv2.imshow('image', image)
