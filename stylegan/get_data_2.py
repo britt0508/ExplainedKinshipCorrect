@@ -66,32 +66,37 @@ class FIW_Val(FIW_DBBase):
 
         return len(self.pairs)
 
-    def get_train_loader(image_dir, labels_path='train/train.label', n_classes=300, image_size=(112, 96),
-                         batch_size=16,
-                         num_workers=1):
-        """Build and return a data loader for the training set."""
-        transform = T.Compose([T.RandomHorizontalFlip(),
-                               T.Resize(image_size),
-                               T.ToTensor(),
-                               T.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
-                               ])
-        dataset = FIW_Train(image_dir, labels_path, n_classes=n_classes, transform=transform)
-        dataset.preprocess()
-        data_loader = DataLoader(dataset=dataset, batch_size=batch_size,
-                              shuffle=True,
+def get_train_loader(image_dir, labels_path, n_classes=300, image_size=(112, 96),
+                      batch_size=16,
+                      num_workers=1):
+    """Build and return a data loader for the training set."""
+    transform = T.Compose([T.RandomHorizontalFlip(),
+                            T.Resize(image_size),
+                            T.ToTensor(),
+                            T.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
+                            ])
+    dataset = FIW_Train(image_dir, labels_path, n_classes=n_classes, transform=transform)
+    dataset.preprocess()
+    data_loader = DataLoader(dataset=dataset, batch_size=batch_size,
+                          shuffle=True,
+                          num_workers=num_workers)
+    return data_loader
+
+def get_val_loader(base_dir, csv_path, image_size=(112, 96), batch_size=128, num_workers=1):
+    """Build and return a data loader for a split in the validation set."""
+    transform = T.Compose([T.Resize(image_size),
+                            T.ToTensor(),
+                            T.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
+                            ])
+
+    dataset = FIW_Val(base_dir, csv_path, transform=transform)
+    dataset.preprocess()
+    data_loader = DataLoader(dataset=dataset, batch_size=batch_size,
+                              shuffle=False,
                               num_workers=num_workers)
-        return data_loader
+    return data_loader
 
-    def get_val_loader(base_dir, csv_path, image_size=(112, 96), batch_size=128, num_workers=1):
-        """Build and return a data loader for a split in the validation set."""
-        transform = T.Compose([T.Resize(image_size),
-                               T.ToTensor(),
-                               T.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
-                               ])
-
-        dataset = FIW_Val(base_dir, csv_path, transform=transform)
-        dataset.preprocess()
-        data_loader = DataLoader(dataset=dataset, batch_size=batch_size,
-                                  shuffle=False,
-                                  num_workers=num_workers)
-        return data_loader
+labels_path = "/content/drive/MyDrive/ExplainedKinshipData/data/train-pairs.csv"
+image_dir = "/content/drive/MyDrive/ExplainedKinshipData/data/train-faces/"
+training_set = get_train_loader(image_dir, labels_path)
+print(training_set)

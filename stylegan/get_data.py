@@ -22,13 +22,13 @@ class FIW_Train(data.Dataset):
     def preprocess(self):
         """Process the labels file"""
         lines = [line.rstrip() for line in open(self.labels_path, 'r')]
-
         for l in lines:
-            spt = l.split()
+            spt = l.split(",")
+            print(spt)
 
             fname = spt[0]
             label = int(spt[1])
-            #label_vec = [1 if i == label else 0 for i in range(self.n_classes)]
+            # label_vec = [1 if i == label else 0 for i in range(self.n_classes)]
 
             self.train_dataset.append([fname, label])
 
@@ -41,6 +41,7 @@ class FIW_Train(data.Dataset):
     def __len__(self):
         """Return the number of images."""
         return len(self.train_dataset)
+
 
 class FIW_Val(data.Dataset):
     """Dataset class for FIW Validation Set"""
@@ -73,7 +74,8 @@ class FIW_Val(data.Dataset):
 
         return len(self.val_dataset)
 
-def get_train_loader(image_dir, labels_path='train/train.label', n_classes=300, image_size=(112, 96), batch_size=16, num_workers=1):
+
+def get_train_loader(image_dir, labels_path, n_classes=300, image_size=(112, 96), batch_size=16, num_workers=1):
     """Build and return a data loader for the training set."""
     transform = []
 
@@ -107,3 +109,9 @@ def get_val_loader(base_dir, csv_path, image_size=(112, 96), batch_size=128, num
                                   shuffle=False,
                                   num_workers=num_workers)
     return data_loader
+
+
+labels_path = "/content/drive/MyDrive/ExplainedKinshipData/data/train-pairs.csv"
+image_dir = "/content/drive/MyDrive/ExplainedKinshipData/data/train-faces/"
+training_set = get_train_loader(image_dir, labels_path)
+print(training_set)
