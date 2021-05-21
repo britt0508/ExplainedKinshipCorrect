@@ -15,6 +15,7 @@ import stylegan.dnnlib.tflib as tflib
 import stylegan.dnnlib as dnnlib
 import pickle
 import cv2.cv2 as cv2
+from pathlib import Path
 
 from PIL import Image
 from stylegan import config
@@ -22,11 +23,11 @@ from stylegan.metrics import metric_base
 from stylegan.training import misc
 
 import sys
+
 sys.path.append("/content/ExplainedKinshipCorrect/stylegan/")
 
-
 BASE_PATH = "C:/Users/Gebruiker/PycharmProjects/ExplainedKinship"
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 
 classifier_urls = [
     'https://nvlabs-fi-cdn.nvidia.com/stylegan/networks/metrics/celebahq-classifier-00-male.pkl',
@@ -89,7 +90,7 @@ def mutual_information(p):
             p_xy = p[x][y]
             p_y = py[y]
             if p_xy > 0.0:
-                result += p_xy * np.log2(p_xy / (p_x * p_y)) # get bits as output
+                result += p_xy * np.log2(p_xy / (p_x * p_y))  # get bits as output
     return result
 
 
@@ -108,8 +109,8 @@ def conditional_entropy(p):
     # H(Y|X) where X corresponds to axis 0, Y to axis 1
     # i.e., How many bits of additional information are needed to where we are on axis 1 if we know where we are on axis 0?
     p = prob_normalize(p)
-    y = np.sum(p, axis=0, keepdims=True) # marginalize to calculate H(Y)
-    return max(0.0, entropy(y) - mutual_information(p)) # can slip just below 0 due to FP inaccuracies, clean those up.
+    y = np.sum(p, axis=0, keepdims=True)  # marginalize to calculate H(Y)
+    return max(0.0, entropy(y) - mutual_information(p))  # can slip just below 0 due to FP inaccuracies, clean those up.
 
 
 class LS(metric_base.MetricBase):
@@ -133,12 +134,14 @@ class LS(metric_base.MetricBase):
                 # Generate images.
                 latents = tf.random_normal([self.minibatch_per_gpu] + Gs_clone.input_shape[1:])
                 dlatents = Gs_clone.components.mapping.get_output_for(latents, None, is_validation=True)
-                images = Gs_clone.components.synthesis.get_output_for(dlatents, is_validation=True, randomize_noise=True)
+                images = Gs_clone.components.synthesis.get_output_for(dlatents, is_validation=True,
+                                                                      randomize_noise=True)
 
                 # Downsample to 256x256. The attribute classifiers were built for 256x256.
                 if images.shape[2] > 256:
                     factor = images.shape[2] // 256
-                    images = tf.reshape(images, [-1, images.shape[1], images.shape[2] // factor, factor, images.shape[3] // factor, factor])
+                    images = tf.reshape(images, [-1, images.shape[1], images.shape[2] // factor, factor,
+                                                 images.shape[3] // factor, factor])
                     images = tf.reduce_mean(images, axis=[3, 5])
 
                 # Run classifier for each attribute.
@@ -174,14 +177,15 @@ class LS(metric_base.MetricBase):
                     svm.score(svm_inputs, svm_targets)
                     svm_outputs = svm.predict(svm_inputs)
                 except:
-                    svm_outputs = svm_targets # assume perfect prediction
+                    svm_outputs = svm_targets  # assume perfect prediction
 
                 # Calculate conditional entropy.
-                p = [[np.mean([case == (row, col) for case in zip(svm_outputs, svm_targets)]) for col in (0, 1)] for row in (0, 1)]
+                p = [[np.mean([case == (row, col) for case in zip(svm_outputs, svm_targets)]) for col in (0, 1)] for row
+                     in (0, 1)]
                 conditional_entropies[space].append(conditional_entropy(p))
 
         # Calculate separability scores.
-        scores = {key: 2**np.sum(values) for key, values in conditional_entropies.items()}
+        scores = {key: 2 ** np.sum(values) for key, values in conditional_entropies.items()}
         self._report_result(scores['latents'], suffix='_z')
         self._report_result(scores['dlatents'], suffix='_w')
 
@@ -198,53 +202,30 @@ def load_pkl(file_or_url):
         return pickle.load(file, encoding='latin1')
 
 
-def get_features(p, ptype):
+def get_features(image_input):
     tflib.init_tf()
-    # classifier = pickle.load(classifier_urls[0])
-    # result_dict = dict()
+    print(image_input)
     no_urls = len(classifier_urls)
-    # image_path = BASE_PATH + "/train-faces/" + p
-    image = cv2.imread("/content/drive/MyDrive/ExplainedKinshipData/data/train-faces/F0001/MID1/P00001_face0.jpg")
-    # image = cv2.imread("/content/example.jpg")
+    image = cv2.imread(str(image_input))
+
+    # image = cv2.imread("/content/drive/MyDrive/ExplainedKinshipData/data/train-faces/F0001/MID1/P00002_face0.jpg")
     image = cv2.normalize(image, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-    print(image.shape)
-    # if image.shape[2] > 256:
-    #     factor = image.shape[2] // 256
-    #     image = tf.reshape(image, [-1, image.shape[1], image.shape[2] // factor, factor, image.shape[3] // factor, factor])
-    #     image = tf.reduce_mean(image, axis=[3, 5])
-    #     print(image.shape)
+    # print(image.shape)
 
-    # top, bottom, left, right = 66, 66, 74, 74
-
-    # image = cv2.copyMakeBorder(image, top, bottom, left, right, cv2.BORDER_CONSTANT)
-    image = cv2.resize(image, (256, 256), interpolation = cv2.INTER_AREA)
+    image = cv2.resize(image, (256, 256), interpolation=cv2.INTER_AREA)
     image = np.array(image)
-    print(image.shape)
+    # print(image.shape)
     image = np.expand_dims(image.T, axis=0)
-    print(image.shape)
-    # cv2.imshow('image small', image_small)
-    # cv2.imshow('image', image)
-    # cv2.waitKey(0)
-
+    # print(image.shape)
     results = []
 
     for i in range(no_urls):
         classifier = load_pkl(classifier_urls[i])
-        # print(tf.rank(image, name=None))
-
-
-        # Dimension 1 in both shapes must be equal, but are 256 and 3. Shapes are [1,256,256,3] and [?,3,256,256].
-        # image = tf.transpose(image, [0, 2, 3, 1])
-        # print(image.shape)
-
-        # The Conv2D op currently only supports the NHWC tensor format on the CPU. The op was given the format: NCHW
-        # data_format='NCHW'
 
         logits = classifier.get_output_for(image, None, is_validation=True, randomize_noise=True)
-        # image = tflib.convert_images_to_uint8(logits)
-        # end_image = image.get_output_for(image)
-        print(logits)
-        print("Yay")
+
+        # print(logits)
+        # print("Yay")
         predictions = tf.nn.softmax(tf.concat([logits, -logits], axis=1))
 
         y = tf.placeholder(tf.int64, shape=(None, 10))
@@ -252,7 +233,7 @@ def get_features(p, ptype):
         acc_Num = tf.cast(acc_bool, tf.float32)
         acc_Mean = tf.reduce_mean(acc_Num)
 
-        print(acc_bool, acc_Mean, acc_Num)
+        # print(acc_bool, acc_Mean, acc_Num)
 
         result_dict = [predictions]
         # pred = []
@@ -272,19 +253,18 @@ def get_features(p, ptype):
         results += tflib.run(result_dict)[0].tolist()
         # print(results)
         # results = {key: np.concatenate([value[key] for value in results], axis=0) for key in results[0].keys()}
-    print(results)
+    # print(results)
+    return results
 
     # Shapes:
     # Tensor("celebahq-classifier-04-young_1/images_in:0", shape=(256, 256, 3), dtype=uint8)
     # Tensor("celebahq-classifier-04-young_1/labels_in:0", shape=(256, 0), dtype=float32)
 
-
     # print(classifier)
-
 
     # latents = tf.random_normal([self.minibatch_per_gpu] + Gs_clone.input_shape[1:])
     # images = Gs_clone.get_output_for(latents, None, is_validation=True, randomize_noise=True)
     # images = tflib.convert_images_to_uint8(images)
     # result_expr.append(inception_clone.get_output_for(images))
 
-get_features("p", "fs")
+# get_features(image)
