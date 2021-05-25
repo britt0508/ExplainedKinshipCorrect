@@ -115,10 +115,12 @@ def get_val_loader(base_dir, csv_path, image_size=(112, 96), batch_size=128, num
 
 
 BASE_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/"
-labels_path = BASE_PATH + "train-pairs.csv"
-image_dir = BASE_PATH + "train-faces/"
+LABELS_PATH = BASE_PATH + "train-pairs.csv"
+IMAGE_PATH = BASE_PATH + "train-faces/"
+DATA_PATH = str(BASE_PATH) + 'pic_train_pairs.csv'
+LOADER_PATH = str(BASE_PATH) + 'loader_pic_train_pairs.csv'
 
-with open(labels_path) as csv_file:
+with open(LABELS_PATH) as csv_file:
     pairs_data = csv.reader(csv_file)
     next(pairs_data, None)
 
@@ -127,23 +129,24 @@ with open(labels_path) as csv_file:
         pic_train_writer.writerow(["pic1", "pic2", "p1", "p2", "ptype"])
 
         for pair in pairs_data:
-            # print(pair)
-            for picture_pair1 in os.listdir(str(image_dir) + str(pair[0])):
-                for picture_pair2 in os.listdir(str(image_dir) + str(pair[1])):
+            print(pair)
+            for picture_pair1 in os.listdir(str(IMAGE_PATH) + str(pair[0])):
+                pic_path1 = str(pair[0]) + "/" + str(picture_pair1)
+                features_1 = linear_separability.get_features(str(IMAGE_PATH) + str(pic_path1))
+
+                for picture_pair2 in os.listdir(str(IMAGE_PATH) + str(pair[1])):
                     # Look at each picture separately
-                    pic_path1 = str(pair[0]) + "/" + str(picture_pair1)
                     pic_path2 = str(pair[1]) + "/" + str(picture_pair2)
 
-                    # # Perform stylegan lin sep on the pictures
-                    # features_1 = linear_separability.get_features(str(image_dir) + str(pic_path1))
-                    # features_2 = linear_separability.get_features(str(image_dir) + str(pic_path2))
+                    # Perform stylegan lin sep on the pictures
+                    # print(str(IMAGE_PATH) + str(pic_path1))
+                    features_2 = linear_separability.get_features(str(IMAGE_PATH) + str(pic_path2))
 
-                    row = [pic_path1, pic_path2, pair[0], pair[1], pair[2]]
+                    # print(features_1)
+                    row = [pic_path1, pic_path2, pair[0], pair[1], pair[2], features_1, features_2]
                     pic_train_writer.writerow(row)
         print(pic_train_writer)
         pic_csv.close()
-
-DATA_PATH = str(BASE_PATH) + 'pic_train_pairs.csv'
 
 
 def train_loader():
@@ -152,7 +155,7 @@ def train_loader():
 
     batch_size = 4
 
-    trainset = torchvision.datasets.CIFAR10(root=DATA_PATH, train=True,
+    trainset = torchvision.datasets.CIFAR10(root=LOADER_PATH, train=True,
                                             download=True, transform=transform)
     trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
                                               shuffle=True, num_workers=2)
@@ -177,17 +180,21 @@ def train_loader():
 
 
 def baseline_model(loader):
-    dataiter = iter(trainloader)
+    dataiter = iter(loader)
     images, labels = dataiter.next()
     print(images, labels)
+    for i, data in enumerate(loader, 0):
+        # get the inputs; data is a list of [inputs, labels]
+        inputs, labels = data
+        print(inputs)
+        print(labels)
 
-    # Perform stylegan linear separability on the pictures
-    # features_1 = linear_separability.get_features(str(image_dir) + str(pic_path1))
-    # features_2 = linear_separability.get_features(str(image_dir) + str(pic_path2))
+        # Perform stylegan linear separability on the pictures
+        # features_1 = linear_separability.get_features(inputs)
+        # features_2 = linear_separability.get_features(inputs)
 
-
-loader = train_loader()
-baseline_model(loader)
+# loader = train_loader()
+# baseline_model(loader)
 
 
 

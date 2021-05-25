@@ -204,7 +204,6 @@ def load_pkl(file_or_url):
 
 def get_features(image_input):
     tflib.init_tf()
-    print(image_input)
     no_urls = len(classifier_urls)
     image = cv2.imread(str(image_input))
 
@@ -224,47 +223,18 @@ def get_features(image_input):
 
         logits = classifier.get_output_for(image, None, is_validation=True, randomize_noise=True)
 
-        # print(logits)
-        # print("Yay")
-        predictions = tf.nn.softmax(tf.concat([logits, -logits], axis=1))
+        predictions = [tf.nn.softmax(tf.concat([logits, -logits], axis=1))]
 
-        y = tf.placeholder(tf.int64, shape=(None, 10))
-        acc_bool = tf.equal(tf.argmax(logits, 1), tf.argmax(y, 1))
-        acc_Num = tf.cast(acc_bool, tf.float32)
-        acc_Mean = tf.reduce_mean(acc_Num)
+        # y = tf.placeholder(tf.int64, shape=(None, 10))
+        # acc_bool = tf.equal(tf.argmax(logits, 1), tf.argmax(y, 1))
+        # acc_Num = tf.cast(acc_bool, tf.float32)
+        # acc_Mean = tf.reduce_mean(acc_Num)
 
         # print(acc_bool, acc_Mean, acc_Num)
 
-        result_dict = [predictions]
-        # pred = []
-        # pred.append(result_dict)
-        # print(predictions.op)
+        results += tflib.run(predictions)[0].tolist()
 
-        # predicted_indices = tf.argmax(predictions, 1)
-        # print(predicted_indices)
-        # predicted_class = tf.gather(TARGET_LABELS, predicted_indices)
-
-        # Sampling loop.
-        # results = []
-        # for _ in range(0, self.num_samples, minibatch_size):
-        #     results += tflib.run(result_expr)
-        # results = {key: np.concatenate([value[key] for value in results], axis=0) for key in results[0].keys()}
-
-        results += tflib.run(result_dict)[0].tolist()
-        # print(results)
-        # results = {key: np.concatenate([value[key] for value in results], axis=0) for key in results[0].keys()}
-    # print(results)
     return results
 
-    # Shapes:
-    # Tensor("celebahq-classifier-04-young_1/images_in:0", shape=(256, 256, 3), dtype=uint8)
-    # Tensor("celebahq-classifier-04-young_1/labels_in:0", shape=(256, 0), dtype=float32)
-
-    # print(classifier)
-
-    # latents = tf.random_normal([self.minibatch_per_gpu] + Gs_clone.input_shape[1:])
-    # images = Gs_clone.get_output_for(latents, None, is_validation=True, randomize_noise=True)
-    # images = tflib.convert_images_to_uint8(images)
-    # result_expr.append(inception_clone.get_output_for(images))
-
+# for image in
 # get_features(image)
