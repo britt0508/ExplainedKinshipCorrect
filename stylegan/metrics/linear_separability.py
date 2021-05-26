@@ -207,31 +207,16 @@ def get_features(image_input):
     no_urls = len(classifier_urls)
     image = cv2.imread(str(image_input))
 
-    # image = cv2.imread("/content/drive/MyDrive/ExplainedKinshipData/data/train-faces/F0001/MID1/P00002_face0.jpg")
     image = cv2.normalize(image, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-    # print(image.shape)
-
     image = cv2.resize(image, (256, 256), interpolation=cv2.INTER_AREA)
     image = np.array(image)
-    # print(image.shape)
     image = np.expand_dims(image.T, axis=0)
-    # print(image.shape)
     results = []
 
     for i in range(no_urls):
         classifier = load_pkl(classifier_urls[i])
-
         logits = classifier.get_output_for(image, None, is_validation=True, randomize_noise=True)
-
         predictions = [tf.nn.softmax(tf.concat([logits, -logits], axis=1))]
-
-        # y = tf.placeholder(tf.int64, shape=(None, 10))
-        # acc_bool = tf.equal(tf.argmax(logits, 1), tf.argmax(y, 1))
-        # acc_Num = tf.cast(acc_bool, tf.float32)
-        # acc_Mean = tf.reduce_mean(acc_Num)
-
-        # print(acc_bool, acc_Mean, acc_Num)
-
         results += tflib.run(predictions)[0].tolist()
 
     return results
