@@ -202,29 +202,18 @@ def load_pkl(file_or_url):
         return pickle.load(file, encoding='latin1')
 
 
-classifier = []
-
-
 # Get classifier for features once
-def load_classifier():
-    no_urls = len(classifier_urls)
-    for i in range(no_urls):
-        classifier.append(load_pkl(classifier_urls[i]))
-
-
-def get_features(image_input):
+def get_features(image_input, c):
     tflib.init_tf()
     image = cv2.imread(str(image_input))
-
     image = cv2.normalize(image, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
     image = cv2.resize(image, (256, 256), interpolation=cv2.INTER_AREA)
     image = np.array(image)
     image = np.expand_dims(image.T, axis=0)
-    results = []
-    for c in classifier:
-        logits = c.get_output_for(image, None, is_validation=True, randomize_noise=True)
-        predictions = [tf.nn.softmax(tf.concat([logits, -logits], axis=1))]
-        results += tflib.run(predictions)[0].tolist()
+
+    logits = c.get_output_for(image, None, is_validation=True, randomize_noise=True)
+    predictions = [tf.nn.softmax(tf.concat([logits, -logits], axis=1))]
+    results = tflib.run(predictions)[0].tolist()
 
     return results
 
