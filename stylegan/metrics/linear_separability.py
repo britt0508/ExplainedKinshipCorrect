@@ -203,19 +203,24 @@ def load_pkl(file_or_url):
 
 
 # Get classifier for features once
-def get_features(image_input, c):
-    tflib.init_tf()
-    image = cv2.imread(str(image_input))
-    image = cv2.normalize(image, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-    image = cv2.resize(image, (256, 256), interpolation=cv2.INTER_AREA)
-    image = np.array(image)
-    image = np.expand_dims(image.T, axis=0)
+def get_features(imgs, c):
+    all_images = []
+    for image_input in imgs:
+        tflib.init_tf()
+        image = cv2.imread(str(image_input))
+        image = cv2.normalize(image, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+        image = cv2.resize(image, (256, 256), interpolation=cv2.INTER_AREA)
+        image = np.array(image)
+        image = np.expand_dims(image.T, axis=0)
+        all_images.append(image)
+    concat_imgs = tf.concat(all_images, 0, name='concat')
 
-    logits = c.get_output_for(image, None, is_validation=True, randomize_noise=True)
+    logits = c.get_output_for(concat_imgs, None, is_validation=True, randomize_noise=True)
     predictions = [tf.nn.softmax(tf.concat([logits, -logits], axis=1))]
-    results = tflib.run(predictions)[0].tolist()
+    result = tflib.run(predictions)[0].tolist()
 
-    return results
+    # return logits
+    return result[0]
 
 # for image in
 # get_features(image)

@@ -84,13 +84,20 @@ def write_features_csv():
         classifier = linear_separability.load_pkl(url)
         count = 0
         row = []
-        for img in im_path:
-            feature = linear_separability.get_features(img, classifier)
+        batch_size = 128
+        im_len = len(im_path)
+        for i in range (0, im_len, batch_size):
+            if im_len > i+batch_size:
+                imgs = im_path[i:i+batch_size]
+            else:
+                imgs = im_path[i:im_len]
+            feature = linear_separability.get_features(imgs, classifier)
             row.append(feature)
             count += 1
             print(count)
         count2 += 1
         print(count2)
+        print(feature)
 
         features.append(row)
         print("classifier loaded: " + str(url))
