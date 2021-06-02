@@ -86,7 +86,7 @@ def write_features_csv():
         row = []
         batch_size = 128
         im_len = len(im_path)
-        for i in range (0, im_len, batch_size):
+        for i in range(0, im_len, batch_size):
             if im_len > i+batch_size:
                 imgs = im_path[i:i+batch_size]
             else:
