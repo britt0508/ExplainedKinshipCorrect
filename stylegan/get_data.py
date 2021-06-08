@@ -11,13 +11,16 @@ import csv
 import glob
 import tensorflow as tf
 from stylegan.metrics import linear_separability
+import pandas as pd
 
 BASE_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/"
-LABELS_PATH = BASE_PATH + "train-pairs.csv"
-IMAGE_PATH = BASE_PATH + "train-faces/"
-DATA_PATH = BASE_PATH + 'pic_train_pairs.csv'
-LOADER_PATH = BASE_PATH + 'loader_pic_train_pairs.csv'
-FEAT_PATH = BASE_PATH + "features_all"
+LABELS_PATH = os.path.join(BASE_PATH, "train-pairs.csv")
+IMAGE_PATH = os.path.join(BASE_PATH, "train-faces/")
+IMAGE_PATH_ARWIN = "C:/Users/Arwin/PycharmProjects/ExplainedKinshipCorrect/data/train-faces"
+DATA_PATH = os.path.join(BASE_PATH, 'pic_train_pairs.csv')
+LOADER_PATH = os.path.join(BASE_PATH, 'loader_pic_train_pairs.csv')
+FEAT_PATH = os.path.join(BASE_PATH, "features_all")
+FEAT_SMALL_PATH = os.path.join(BASE_PATH, "features_all")
 
 classifier_urls = [
     'https://nvlabs-fi-cdn.nvidia.com/stylegan/networks/metrics/celebahq-classifier-00-male.pkl',
@@ -101,7 +104,7 @@ def write_features_csv():
 
         features.append(row)
         print("classifier loaded: " + str(url))
-    df = pd.DataFrame(im_path + features, column = ["Image_path"] + [str(i) for i in no_urls])
+    df = pd.DataFrame([im_path + features], column=["Image_path"] + [str(i) for i in no_urls])
     df.to_csv(FEAT_PATH)
     return df
 
@@ -111,40 +114,47 @@ def write_features_pairs_csv():
         pairs_data = csv.reader(csv_file)
         next(pairs_data, None)
 
-        all_features = pd.read_csv(FEAT_PATH)
+        all_features = pd.read_csv(FEAT_SMALL_PATH)
         # all_features = write_features_csv()
-
 
         with open(str(BASE_PATH) + 'pic_train_pairs.csv', mode='w') as pic_csv:
             pic_train_writer = csv.writer(pic_csv, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             pic_train_writer.writerow(["pic1", "pic2", "p1", "p2", "ptype"])
 
             for pair in pairs_data:
-                print(pair)
+                # print(pair)
                 for picture_pair1 in os.listdir(str(IMAGE_PATH) + str(pair[0])):
-                    for picture_pair2 in os.listdir(str(IMAGE_PATH) + str(pair[1])):
-                        # Look at each picture separately
-                        pic_path1 = str(pair[0]) + "/" + str(picture_pair1)
-                        pic_path2 = str(pair[1]) + "/" + str(picture_pair2)
-                        pic_1_entire_path = str(IMAGE_PATH) + str(pic_path1)
-                        pic_2_entire_path = str(IMAGE_PATH) + str(pic_path2)
+                    pic_path1 = str(pair[0]) + "/" + str(picture_pair1)
+                    # pic_1_entire_path = str(IMAGE_PATH) + str(pic_path1)
+                    pic_1_arwin_path = str(IMAGE_PATH_ARWIN) + "/" + str(pic_path1)
 
-                        # Get features from stylegan lin sep per picture
-                        features_1 = all_features.loc[all_features['Image_path'] == pic_1_entire_path]
-                        features_2 = all_features.loc[all_features['Image_path'] == pic_2_entire_path]
+                    if pic_1_arwin_path in all_features:
+                        print("pic 1 path yes")
+                        features_1 = all_features.loc[all_features['Image_path'] == pic_1_arwin_path]
 
-                        # features_1 = linear_separability.get_features(str(IMAGE_PATH) + str(pic_path1))
-                        # features_2 = linear_separability.get_features(str(IMAGE_PATH) + str(pic_path2))
+                        for picture_pair2 in os.listdir(str(IMAGE_PATH) + str(pair[1])):
+                            # Look at each picture separately
+                            pic_2_arwin_path = str(IMAGE_PATH_ARWIN) + str(pic_path2)
+                            if pic_2_arwin_path in all_features:
+                                print("pic 2 path yes")
+                                pic_path2 = str(pair[1]) + "/" + str(picture_pair2)
+                                # pic_2_entire_path = str(IMAGE_PATH) + str(pic_path2)
 
-                        # print(features_1)
-                        row = [pic_path1, pic_path2, pair[0], pair[1], pair[2], features_1, features_2]
-                        pic_train_writer.writerow(row)
+                                # Get features from stylegan lin sep per picture
+                                features_2 = all_features.loc[all_features['Image_path'] == pic_2_arwin_path]
+
+                                # features_1 = linear_separability.get_features(str(IMAGE_PATH) + str(pic_path1))
+                                # features_2 = linear_separability.get_features(str(IMAGE_PATH) + str(pic_path2))
+
+                                # print(features_1)
+                                row = [pic_path1, pic_path2, pair[0], pair[1], pair[2], features_1, features_2]
+                                pic_train_writer.writerow(row)
             print(pic_train_writer)
             pic_csv.close()
 
 
-write_features_csv()
-# write_features_pairs_csv()
+# write_features_csv()
+write_features_pairs_csv()
 
 
 
