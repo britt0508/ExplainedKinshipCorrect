@@ -176,8 +176,6 @@ def NeuralNetwork(X, y, xtest, ytest, feed_forward=False):
     preds = model.predict(X)  # see how the model did!
     print(preds[0])  # i'm spreading that prediction across three nodes and they sum to 1
     print(np.sum(preds[0]))  # sum it up! Should be 1
-    ## [9.9999988e-01 1.3509347e-07 6.7064638e-16]
-    ## 1.0
 
     # Almost a perfect prediction
     # actual is left, predicted is top

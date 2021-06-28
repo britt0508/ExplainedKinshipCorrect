@@ -20,6 +20,8 @@ from collections import defaultdict
 import stylegan.dnnlib as dnnlib
 import stylegan.dnnlib.tflib as tflib
 
+from ast import literal_eval
+
 from stylegan import config
 
 import sys
@@ -221,7 +223,50 @@ def write_features_pairs_csv_test(all_features):
 
 
 def get_random_pairs_nonfam():
-    print("help")
+    IMAGE_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/train-faces/"
+    all_feat = pd.read_csv("/content/drive/MyDrive/ExplainedKinshipData/data/Features_train/merged.csv")
+
+    im_path = []
+    im_path_rel = []
+    for img in sorted(glob.glob(IMAGE_PATH + "***/**/*.jpg")):
+        if "MID" in img:
+            im_path.append(img)
+            im_path_rel.append(os.path.relpath(img, IMAGE_PATH))
+    # im_path = im_path # remove for full dataset
+    print("image paths loaded")
+
+    sample = np.random.choice(im_path_rel, size=(39742, 2), replace=True)
+    print("sample taken")
+
+    all_pairs = pd.read_csv("/content/drive/MyDrive/ExplainedKinshipData/data/pic_train_pairs.csv",
+                            header=0, names=["pic1", "pic2", "p1", "p2", "ptype", "feat1", "feat2"],
+                            converters={"feat1": literal_eval, "feat2": literal_eval})
+    all_pairs.drop(["p1", "p2"], axis=1)
+    pd.set_option("display.max_columns", max_cols=None)
+    print(all_pairs.head(5))
+
+    count = 0
+    for pic1, pic2 in sample:
+        if (all_pairs[['pic1', 'pic2']].values == [pic1, pic2]).all(axis=1).any() or (
+                all_pairs[['pic1', 'pic2']].values == [pic2, pic1]).all(axis=1).any():
+            print("already here")
+        else:
+            feat1 = (all_feat.loc[all_feat['Image_path'] == pic1]).values.tolist()[0][2:]
+            feat2 = (all_feat.loc[all_feat['Image_path'] == pic2]).values.tolist()[0][2:]
+            to_append = [pic1, pic2, "unrelated", feat1, feat2]
+            a_series = pd.Series(to_append, index=all_pairs.columns)
+            all_pairs = all_pairs.append(a_series, ignore_index=True)
+        count += 1
+
+        if count == 500:
+            all_pairs.to_csv("/content/drive/MyDrive/ExplainedKinshipData/data/test.csv")
+            count = 0
+            print("csv stored")
+
+        # ,index,first,second,relation,features_1,features_2
+
+
+get_random_pairs_nonfam()
 
 
 def str2bool(v):
@@ -233,7 +278,6 @@ def str2bool(v):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
-
 
 # parser = argparse.ArgumentParser(description='Get a single feature for the entire dataset.')
 # parser.add_argument('--feature', type=int, help='The feature we extract in this run.', default=0)
@@ -252,15 +296,17 @@ def str2bool(v):
 #     data = pd.read_csv(csv_file)
 #     write_features_pairs_csv_test(data)
 
-# path = "/content/drive/MyDrive/ExplainedKinshipData/data/Features_test"
-# all_files = glob.glob(os.path.join(path, "features_all_test_*.csv"))
+# path = "/content/drive/MyDrive/ExplainedKinshipData/data/Features_train"
+# all_files = glob.glob(os.path.join(path, "features_all_train_*.csv"))
 # combined_csv_data = pd.read_csv(all_files[0], delimiter=',')
+# combined_csv_data = combined_csv_data.iloc[: , 1:]
+# print(combined_csv_data)
 
 # for f in all_files[1:]:
 #     df = pd.read_csv(f, delimiter=',')
 #     df.set_index('Image_path', inplace=True)
 #     df = df.iloc[: , 1:]
-#     print(df)
+#     # print(df)
 #     combined_csv_data = pd.merge(combined_csv_data, df, on='Image_path')
 
 # combined_csv_data.to_csv(os.path.join(path, "merged.csv"))
