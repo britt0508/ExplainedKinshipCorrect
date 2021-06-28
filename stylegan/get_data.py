@@ -240,7 +240,7 @@ def get_random_pairs_nonfam():
                             header=0, names=["pic1", "pic2", "p1", "p2", "ptype", "feat1", "feat2"],
                             converters={"feat1": literal_eval, "feat2": literal_eval}, nrows=N)
     all_pairs = all_pairs.drop(["p1", "p2"], axis=1)
-    m = pd.DataFrame(np.sort(all_pairs[['pic1', 'pic2']], axis=1), index=all_pairs.index).duplicated()
+    m = pd.DataFrame(np.sort(all_pairs[['pic1','pic2']], axis=1), index=all_pairs.index).duplicated()
     all_pairs = all_pairs[~m]
     pd.set_option("display.max_columns", None)
     print(all_pairs.head(5))

@@ -37,32 +37,40 @@ import pydotplus
 
 from ast import literal_eval
 
-DATA_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/all_pairs_also_unrelated.csv"
+from collections import Counter
+
+DATA_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/all_pairs_also_unrelated_2.csv"
 data = pd.read_csv(DATA_PATH, converters={"feat1": literal_eval, "feat2": literal_eval})
 print(data["ptype"])
+# data = data.iloc[-101830:]
+ptype_counted = data['ptype'].value_counts()
+print(ptype_counted)
 
-def NaiveBayes(x, y, xtest, ytest):
-    cnb = CategoricalNB()
-    cnb.fit(x, y)
-    cnb.predict(xtest)
-    y_pred_cnb = cnb.predict(X_test)
-    y_prob_pred_cnb = cnb.predict_proba(X_test)
+def NaiveBayes(x, y, xtest, ytest, binary=False):
+    if binary:
+        nb = GaussianNB()
+    else:
+        nb = CategoricalNB()
+    nb.fit(x, y)
+    nb.predict(xtest)
+    y_pred_nb = nb.predict(X_test)
+    y_prob_pred_nb = nb.predict_proba(X_test)
     # how did our model perform?
-    count_misclassified = (y_test != y_pred_cnb).sum()
+    count_misclassified = (y_test != y_pred_nb).sum()
 
     print("CategoricalNB")
     print("=" * 30)
     print('Misclassified samples: {}'.format(count_misclassified))
-    accuracy = accuracy_score(y_test, y_pred_cnb)
+    accuracy = accuracy_score(y_test, y_pred_nb)
     print('Accuracy: {:.2f}'.format(accuracy))
 
     # print("Number of mislabeled points out of a total %d points : %d" % (X_test.shape[0], (y_test != y_pred).sum()))
 
 
-def LinRegression(x, y):
+def LinRegression(x, y, xtest, ytest):
     model = LinearRegression().fit(x, y)
-    r_sq = model.score(x, y)
-    y_pred = model.predict(x)
+    r_sq = model.score(xtest, ytest)
+    y_pred = model.predict(xtest)
     print(r_sq)
 
 
@@ -212,7 +220,7 @@ def Get_xy(one_hot=False, binary=False):
         le.fit(labels)
         classes = le.transform(data["ptype"])
 
-    X_train, X_test, y_train, y_test = train_test_split(f, classes, test_size=0.3, random_state=0)
+    X_train, X_test, y_train, y_test = train_test_split(f, classes, test_size=0.3, random_state=42)
 
     print("Data split")
 
@@ -229,7 +237,11 @@ def Get_xy(one_hot=False, binary=False):
         # print(X_test)
         y_test = np.squeeze(np.array(list(y_test)))
 
-    print()
+    print(y_test)
+    train_values, train_counts = np.unique(y_train, return_counts=True)
+    print(train_values, train_counts)
+    test_values, test_counts = np.unique(y_test, return_counts=True)
+    print(test_values, test_counts)
     # print(y_train.shape)
     # print(X_train.shape)
 
@@ -240,10 +252,9 @@ def Get_xy(one_hot=False, binary=False):
 # X_train, y_train, X_test, y_test = Get_xy(one_hot = True)
 X_train, y_train, X_test, y_test = Get_xy(binary = True)
 
-
 # NeuralNetwork(X_train, y_train, X_test, y_test, feed_forward=True)
-DecisionTree(X_train, y_train, X_test, y_test)
-# NaiveBayes(X_train, y_train, X_test, y_test)
+# DecisionTree(X_train, y_train, X_test, y_test)
+NaiveBayes(X_train, y_train, X_test, y_test, binary=True)
 # SVM(X_train, y_train, X_test, y_test)
 
 
