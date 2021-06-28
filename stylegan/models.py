@@ -37,11 +37,9 @@ import pydotplus
 
 from ast import literal_eval
 
-DATA_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/pic_train_pairs.csv"
-data = pd.read_csv(DATA_PATH, header=0,
-                   names=["pic1", "pic2", "p1", "p2", "ptype", "feat1", "feat2"],
-                   converters={"feat1": literal_eval, "feat2": literal_eval})
-
+DATA_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/all_pairs_also_unrelated.csv"
+data = pd.read_csv(DATA_PATH, converters={"feat1": literal_eval, "feat2": literal_eval})
+print(data["ptype"])
 
 def NaiveBayes(x, y, xtest, ytest):
     cnb = CategoricalNB()
@@ -197,38 +195,51 @@ def SVM(X, y, xtest, ytest):
     print(classification_report(ytest, ypred))
 
 
-def Get_xy(one_hot=False):
+def Get_xy(one_hot=False, binary=False):
     data["feat1and2"] = data["feat1"] + data["feat2"]
     f = data["feat1and2"]
 
     classes = data["ptype"].values
 
+    labels = ["sibs", "bb", "ss", "ms", "md", "fs", "fd", "gfgd", "gfgs", "gmgd", "gmgs"]
+
+    if binary:
+        classes = [1 if i in labels else 0 for i in classes]
+
+
     if one_hot:
         le = preprocessing.LabelEncoder()
-        le.fit(["sibs", "bb", "ss", "ms", "md", "fs", "fd", "gfgd", "gfgs", "gmgd", "gmgs"])
+        le.fit(labels)
         classes = le.transform(data["ptype"])
 
     X_train, X_test, y_train, y_test = train_test_split(f, classes, test_size=0.3, random_state=0)
 
     print("Data split")
-    # DO SOMETHING HERE WITH DATA TO MAKE IT WORK
-    X_train = np.array(list(map(list, X_train)))
-    # print(X_train)
-    y_train = np.squeeze(np.array(list(y_train)))
 
-    X_test = np.array(list(map(list, X_test)))
-    # print(X_test)
-    y_test = np.squeeze(np.array(list(y_test)))
+    if binary:
+        X_train = np.array(list(X_train))
+        X_test = np.array(list(X_test))
+    else:
+        # DO SOMETHING HERE WITH DATA TO MAKE IT WORK
+        X_train = np.array(list(map(list, X_train)))
+        # print(X_train)
+        y_train = np.squeeze(np.array(list(y_train)))
 
-    # print(y_train)
+        X_test = np.array(list(map(list, X_test)))
+        # print(X_test)
+        y_test = np.squeeze(np.array(list(y_test)))
+
+    print()
     # print(y_train.shape)
     # print(X_train.shape)
 
     return X_train, y_train, X_test, y_test
 
 
-X_train, y_train, X_test, y_test = Get_xy()
+# X_train, y_train, X_test, y_test = Get_xy()
 # X_train, y_train, X_test, y_test = Get_xy(one_hot = True)
+X_train, y_train, X_test, y_test = Get_xy(binary = True)
+
 
 # NeuralNetwork(X_train, y_train, X_test, y_test, feed_forward=True)
 DecisionTree(X_train, y_train, X_test, y_test)

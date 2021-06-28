@@ -223,6 +223,7 @@ def write_features_pairs_csv_test(all_features):
 
 
 def get_random_pairs_nonfam():
+    N = 200000
     IMAGE_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/train-faces/"
     all_feat = pd.read_csv("/content/drive/MyDrive/ExplainedKinshipData/data/Features_train/merged.csv")
 
@@ -235,17 +236,22 @@ def get_random_pairs_nonfam():
     # im_path = im_path # remove for full dataset
     print("image paths loaded")
 
-    sample = np.random.choice(im_path_rel, size=(39742, 2), replace=True)
-    print("sample taken")
-
     all_pairs = pd.read_csv("/content/drive/MyDrive/ExplainedKinshipData/data/pic_train_pairs.csv",
                             header=0, names=["pic1", "pic2", "p1", "p2", "ptype", "feat1", "feat2"],
-                            converters={"feat1": literal_eval, "feat2": literal_eval})
-    all_pairs.drop(["p1", "p2"], axis=1)
-    pd.set_option("display.max_columns", max_cols=None)
+                            converters={"feat1": literal_eval, "feat2": literal_eval}, nrows=N)
+    all_pairs = all_pairs.drop(["p1", "p2"], axis=1)
+    m = pd.DataFrame(np.sort(all_pairs[['pic1', 'pic2']], axis=1), index=all_pairs.index).duplicated()
+    all_pairs = all_pairs[~m]
+    pd.set_option("display.max_columns", None)
     print(all_pairs.head(5))
 
+    M = len(all_pairs)
+
+    sample = np.random.choice(im_path_rel, size=(M, 2), replace=True)
+    print("sample taken")
+
     count = 0
+    count2 = 0
     for pic1, pic2 in sample:
         if (all_pairs[['pic1', 'pic2']].values == [pic1, pic2]).all(axis=1).any() or (
                 all_pairs[['pic1', 'pic2']].values == [pic2, pic1]).all(axis=1).any():
@@ -259,11 +265,11 @@ def get_random_pairs_nonfam():
         count += 1
 
         if count == 500:
-            all_pairs.to_csv("/content/drive/MyDrive/ExplainedKinshipData/data/test.csv")
+            count2 += 1
+            all_pairs.to_csv("/content/drive/MyDrive/ExplainedKinshipData/data/all_pairs_also_unrelated_2.csv")
             count = 0
-            print("csv stored")
-
-        # ,index,first,second,relation,features_1,features_2
+            print("csv stored {}".format(count2))
+    all_pairs.to_csv("/content/drive/MyDrive/ExplainedKinshipData/data/all_pairs_also_unrelated_2.csv")
 
 
 get_random_pairs_nonfam()
