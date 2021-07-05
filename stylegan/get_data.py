@@ -26,8 +26,6 @@ from stylegan import config
 
 import sys
 
-# tf.compat.v1.enable_eager_execution()
-
 
 classifier_urls = [
     'https://nvlabs-fi-cdn.nvidia.com/stylegan/networks/metrics/celebahq-classifier-00-male.pkl',
@@ -105,31 +103,27 @@ def get_features(imgs, predictions, x):
     return result[:, 1].tolist()
 
 
+''' Get facial features values for all pictures
+using the linear seperability module from the StyleGAN model.'''
 def write_features_csv(args):
-    # tflib.init_tf()
     train_adjective = 'test'
     BASE_PATH = args.data_dir
-    # LABELS_PATH = os.path.join(BASE_PATH, "train-pairs.csv")
     IMAGE_PATH = os.path.join(BASE_PATH, "{}-faces/".format(train_adjective))
-    # DATA_PATH = os.path.join(BASE_PATH, 'pic_train_pairs.csv')
-    # LOADER_PATH = os.path.join(BASE_PATH, 'loader_pic_train_pairs.csv')
     FEAT_PATH = os.path.join(args.out_dir, "features_all_{}_{}.csv".format(train_adjective, str(args.feature)))
     FEAT_PATH_TEST = os.path.join(args.out_dir, "features_all_{}_{}.csv".format(train_adjective, str(args.feature)))
 
-    # Get list of all image paths
+    # Get list of all image paths in the given folder.
     im_path = []
     im_path_rel = []
     for img in sorted(glob.glob(IMAGE_PATH + "*.jpg")):
         im_path.append(img)
         im_path_rel.append(os.path.relpath(img, IMAGE_PATH))
-    # im_path = im_path # remove for full dataset
     print("image paths loaded")
 
-    # Get feature values per feature for each picture:
-    # [[feat1], [feat2], ..., [feat40]] with [feat1] a list of feature 1 values for all pictures
     batch_size = args.batch_size
     x = tf.placeholder(tf.float32, shape=(None, 3, 256, 256))
 
+    # Load  classifier from linear seperability module.
     url = classifier_urls[args.feature]
     c = load_pkl(url)
     logits = c.get_output_for(x, None, is_validation=True, randomize_noise=False, structure='fixed')
@@ -137,12 +131,12 @@ def write_features_csv(args):
 
     row = []
 
+    # Get values for asked feature, using batches.
     print("Performing feature: " + str(args.feature))
     im_len = len(im_path)
     for i in range(0, im_len, batch_size):
         print("Performing batch: " + str(int(i / batch_size)))
-        # tf.reset_default_graph()
-        # classifier = load_pkl(url)
+
         if im_len > i + batch_size:
             imgs = im_path[i:i + batch_size]
         else:
@@ -162,13 +156,14 @@ def write_features_csv(args):
     return df
 
 
+''' Get all pairs of family members in a csv file, 
+together with their facial feature values'''
 def write_features_pairs_csv(args):
     with open(LABELS_PATH) as csv_file:
         pairs_data = csv.reader(csv_file)
         next(pairs_data, None)
 
         all_features = pd.read_csv(FEAT_PATH)
-        # all_features = write_features_csv()
 
         with open(str(BASE_PATH) + 'pic_train_pairs.csv', mode='w') as pic_csv:
             pic_train_writer = csv.writer(pic_csv, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -194,6 +189,8 @@ def write_features_pairs_csv(args):
             pic_csv.close()
 
 
+''' Get all pairs of family members from the test set
+and compose csv with their facial features values'''
 def write_features_pairs_csv_test(all_features):
     BASE_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/"
     LABELS_PATH = os.path.join(BASE_PATH, "test_competition.xlsx")
@@ -222,23 +219,23 @@ def write_features_pairs_csv_test(all_features):
         df_pd['features_2'] = df_pd[pair["index"]].map(names2)
 
 
+''' Expand the data of family pairs by adding unrelated pairs. '''
 def get_random_pairs_nonfam():
-    N = 200000
     IMAGE_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/train-faces/"
     all_feat = pd.read_csv("/content/drive/MyDrive/ExplainedKinshipData/data/Features_train/merged.csv")
 
     im_path = []
     im_path_rel = []
     for img in sorted(glob.glob(IMAGE_PATH + "***/**/*.jpg")):
+        # Exclude the unrelated or non faces maps.
         if "MID" in img:
             im_path.append(img)
             im_path_rel.append(os.path.relpath(img, IMAGE_PATH))
-    # im_path = im_path # remove for full dataset
     print("image paths loaded")
 
     all_pairs = pd.read_csv("/content/drive/MyDrive/ExplainedKinshipData/data/pic_train_pairs.csv",
-                            header=0, names=["pic1", "pic2", "p1", "p2", "ptype", "feat1", "feat2"],
-                            converters={"feat1": literal_eval, "feat2": literal_eval}, nrows=N)
+                            header=0, names=["pic1", "pic2", "p1", "p2", "ptype", "feat1", "feat2"])
+                            # , converters={"feat1": literal_eval, "feat2": literal_eval})
     all_pairs = all_pairs.drop(["p1", "p2"], axis=1)
     m = pd.DataFrame(np.sort(all_pairs[['pic1','pic2']], axis=1), index=all_pairs.index).duplicated()
     all_pairs = all_pairs[~m]
@@ -246,6 +243,7 @@ def get_random_pairs_nonfam():
     print(all_pairs.head(5))
 
     M = len(all_pairs)
+    print(M)
 
     sample = np.random.choice(im_path_rel, size=(M, 2), replace=True)
     print("sample taken")
@@ -253,26 +251,24 @@ def get_random_pairs_nonfam():
     count = 0
     count2 = 0
     for pic1, pic2 in sample:
-        if (all_pairs[['pic1', 'pic2']].values == [pic1, pic2]).all(axis=1).any() or (
-                all_pairs[['pic1', 'pic2']].values == [pic2, pic1]).all(axis=1).any():
-            print("already here")
-        else:
-            feat1 = (all_feat.loc[all_feat['Image_path'] == pic1]).values.tolist()[0][2:]
-            feat2 = (all_feat.loc[all_feat['Image_path'] == pic2]).values.tolist()[0][2:]
-            to_append = [pic1, pic2, "unrelated", feat1, feat2]
-            a_series = pd.Series(to_append, index=all_pairs.columns)
-            all_pairs = all_pairs.append(a_series, ignore_index=True)
+        # Uncommend tho following to exclude duplicates of pairs:
+        # if (all_pairs[['pic1', 'pic2']].values == [pic1, pic2]).all(axis=1).any() or (
+        #         all_pairs[['pic1', 'pic2']].values == [pic2, pic1]).all(axis=1).any():
+        #     print("already here")
+        # else:
+        feat1 = (all_feat.loc[all_feat['Image_path'] == pic1]).values.tolist()[0][2:]
+        feat2 = (all_feat.loc[all_feat['Image_path'] == pic2]).values.tolist()[0][2:]
+        to_append = [pic1, pic2, "unrelated", feat1, feat2]
+        a_series = pd.Series(to_append, index=all_pairs.columns)
+        all_pairs = all_pairs.append(a_series, ignore_index=True)
         count += 1
 
-        if count == 500:
+        if count == 1000:
             count2 += 1
-            all_pairs.to_csv("/content/drive/MyDrive/ExplainedKinshipData/data/all_pairs_also_unrelated_2.csv")
+            all_pairs.to_csv("/content/drive/MyDrive/ExplainedKinshipData/data/all_pairs_also_unrelated_complete.csv")
             count = 0
             print("csv stored {}".format(count2))
-    all_pairs.to_csv("/content/drive/MyDrive/ExplainedKinshipData/data/all_pairs_also_unrelated_2.csv")
-
-
-get_random_pairs_nonfam()
+    all_pairs.to_csv("/content/drive/MyDrive/ExplainedKinshipData/data/all_pairs_also_unrelated_complete.csv")
 
 
 def str2bool(v):
@@ -285,6 +281,7 @@ def str2bool(v):
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
+# Uncommend to use write_features_csv
 # parser = argparse.ArgumentParser(description='Get a single feature for the entire dataset.')
 # parser.add_argument('--feature', type=int, help='The feature we extract in this run.', default=0)
 # parser.add_argument('--batch-size', type=int, help='Batch size used.', default=32)
@@ -295,13 +292,11 @@ def str2bool(v):
 
 # args = parser.parse_args()
 # write_features_csv(args)
+
+# Uncommend to get csv of all family pairs
 # write_features_pairs_csv()
 
-# path = "/content/drive/MyDrive/ExplainedKinshipData/data/Features_test/merged.csv"
-# with open(path) as csv_file:
-#     data = pd.read_csv(csv_file)
-#     write_features_pairs_csv_test(data)
-
+# Uncommend to merge all features for training set.
 # path = "/content/drive/MyDrive/ExplainedKinshipData/data/Features_train"
 # all_files = glob.glob(os.path.join(path, "features_all_train_*.csv"))
 # combined_csv_data = pd.read_csv(all_files[0], delimiter=',')

@@ -20,6 +20,7 @@ from sklearn.svm import LinearSVC
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.datasets import make_classification
+from sklearn.inspection import permutation_importance
 
 # for data and modeling
 import keras
@@ -31,51 +32,98 @@ from keras.layers import Dense, Dropout
 from keras.callbacks import EarlyStopping
 from tensorflow.keras import datasets, layers, models
 
+import seaborn as sns
+
 from six import StringIO
 from IPython.display import Image
 import pydotplus
 
 from ast import literal_eval
 
+from sklearn.inspection import permutation_importance
+
 from collections import Counter
 
-DATA_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/all_pairs_also_unrelated_2.csv"
+
+DATA_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/all_pairs_also_unrelated_complete.csv"
 data = pd.read_csv(DATA_PATH, converters={"feat1": literal_eval, "feat2": literal_eval})
 print(data["ptype"])
-# data = data.iloc[-101830:]
+
 ptype_counted = data['ptype'].value_counts()
 print(ptype_counted)
 
-def NaiveBayes(x, y, xtest, ytest, binary=False):
+feature_names = list(data.columns)
+print(feature_names)
+
+
+def heatmap_confmat(ytest, ypred, name):
+    labels = [0, 1]
+    conf_mat = confusion_matrix(ytest, ypred, labels = labels)
+    print(conf_mat)
+    # heatm = sns.heatmap(conf_mat, annot=True)
+    # print(heatm)
+    group_names = ['True Neg','False Pos','False Neg','True Pos']
+    group_counts = ["{0:0.0f}".format(value) for value in conf_mat.flatten()]
+    group_percentages = ["{0:.2%}".format(value) for value in conf_mat.flatten()/np.sum(conf_mat)]
+    labels = [f"{v1}\n{v2}\n{v3}" for v1, v2, v3 in zip(group_names,group_counts,group_percentages)]
+    labels = np.asarray(labels).reshape(2,2)
+    heat = sns.heatmap(conf_mat, annot=labels, fmt='', cmap='Blues')
+    heat.figure.savefig(name)
+
+
+def NaiveBayes(xtrain, ytrain, xtest, ytest, binary=False):
     if binary:
         nb = GaussianNB()
+        model = "GaussianNB"
     else:
         nb = CategoricalNB()
-    nb.fit(x, y)
-    nb.predict(xtest)
-    y_pred_nb = nb.predict(X_test)
-    y_prob_pred_nb = nb.predict_proba(X_test)
-    # how did our model perform?
-    count_misclassified = (y_test != y_pred_nb).sum()
+        model = "CategoricalNB"
 
-    print("CategoricalNB")
+    nb.fit(xtrain, ytrain)
+    nb.predict(xtest)
+    y_pred_nb = nb.predict(xtest)
+    y_prob_pred_nb = nb.predict_proba(xtest)
+    # how did our model perform?
+    count_misclassified = (ytest != y_pred_nb).sum()
+
+    print(model)
     print("=" * 30)
     print('Misclassified samples: {}'.format(count_misclassified))
-    accuracy = accuracy_score(y_test, y_pred_nb)
+    accuracy = accuracy_score(ytest, y_pred_nb)
     print('Accuracy: {:.2f}'.format(accuracy))
 
-    # print("Number of mislabeled points out of a total %d points : %d" % (X_test.shape[0], (y_test != y_pred).sum()))
+    heatmap_confmat(ytest, y_pred_nb, "naive_bayes.png")
 
+    feature_importance(nb, xtest, ytest)
 
 def LinRegression(x, y, xtest, ytest):
-    model = LinearRegression().fit(x, y)
-    r_sq = model.score(xtest, ytest)
-    y_pred = model.predict(xtest)
-    print(r_sq)
+    # define the model
+    model = LinearRegression()
+    # fit the model
+    model.fit(x, y)
+    # get importance
+    importance = model.coef_
+    # summarize feature importance
+    feature_names_trimmed = []
+    indexes = []
+    for i,v in enumerate(importance):
+        print('Feature: %0s, Score: %.5f' % (feature_names[i],v))
+        if i > 0:
+            feature_names_trimmed.append(feature_names[i])
+            indexes.append(i)
+
+    # plot feature importance
+
+    importance = [importance[i] for i in indexes]
+
+    xpos = [x for x in range(len(importance))]
+    plt.bar(xpos, importance)
+    plt.xticks(xpos, feature_names_trimmed)
+    plt.savefig("linreg.png")
 
 
 def DecisionTree(x, y, xtest, ytest):
-    clf = DecisionTreeClassifier(max_depth=5)
+    clf = DecisionTreeClassifier(max_depth=4)
 
     # Train Decision Tree Classifer
     clf = clf.fit(x, y)
@@ -83,21 +131,23 @@ def DecisionTree(x, y, xtest, ytest):
     # Predict the response for test dataset
     y_pred = clf.predict(xtest)
     print("Accuracy:", metrics.accuracy_score(ytest, y_pred))
-    VisualizationTree(clf)
+    # VisualizationTree(clf)
+    heatmap_confmat(ytest, y_pred, "Decisiontree.png")
 
 
 def VisualizationTree(clf):
     feature_cols = [i for i in range(80)]
     # feature_names = df.columns[:5]
-    target_names = data['ptype'].unique().tolist()
+    # target_names = data['ptype'].unique().tolist()
+    target_names = ['0', '1']
 
     tree.plot_tree(clf,
                    feature_names=feature_cols,
                    class_names=target_names,
                    filled=True,
                    rounded=True)
-
-    plt.savefig('tree_visualization.pdf')
+    plt.figure(figsize=(12,12))
+    plt.savefig('tree_visualization.pdf', bbox_inches='tight', dpi=100, fontsize=18)
     # dot_data = StringIO()
     # export_graphviz(clf, out_file=dot_data,
     #                 filled=True, rounded=True,
@@ -186,6 +236,8 @@ def NeuralNetwork(X, y, xtest, ytest, feed_forward=False):
     # Almost a perfect prediction
     # actual is left, predicted is top
     # names can be found by inspecting Y
+    heatmap_confmat(ytest, y_pred_nb, "naive_bayes.png")
+
     matrix = confusion_matrix(dummy_y.argmax(axis=1), preds.argmax(axis=1))
     print(matrix)
 
@@ -199,11 +251,21 @@ def SVM(X, y, xtest, ytest):
     # print(clf.named_steps['linearsvc'].coef_)
     # print(clf.named_steps['linearsvc'].intercept_)
     ypred = clf.predict(xtest)
-    print(confusion_matrix(ytest, ypred))
+    heatmap_confmat(ytest, ypred, "svm.png")
+
     print(classification_report(ytest, ypred))
 
 
+def feature_importance(model, xval, yval):
+    r = permutation_importance(model, xval, yval, n_repeats=30, random_state=0)
+    for i in r.importances_mean.argsort()[::-1]:
+        if r.importances_mean[i] - 2 * r.importances_std[i] > 0:
+            print(f"{feature_names[i]:<8}" f"{r.importances_mean[i]:.3f}" f" +/- {r.importances_std[i]:.3f}")
+
+
 def Get_xy(one_hot=False, binary=False):
+    # data = data.iloc[-101830:] # Uncommend for balanced dataset when using binary
+
     data["feat1and2"] = data["feat1"] + data["feat2"]
     f = data["feat1and2"]
 
@@ -254,8 +316,9 @@ X_train, y_train, X_test, y_test = Get_xy(binary = True)
 
 # NeuralNetwork(X_train, y_train, X_test, y_test, feed_forward=True)
 # DecisionTree(X_train, y_train, X_test, y_test)
-NaiveBayes(X_train, y_train, X_test, y_test, binary=True)
+# NaiveBayes(X_train, y_train, X_test, y_test, binary=True)
 # SVM(X_train, y_train, X_test, y_test)
+LinRegression(X_train, y_train, X_test, y_test)
 
 
 # features = data[["feat1", "feat2"]]
