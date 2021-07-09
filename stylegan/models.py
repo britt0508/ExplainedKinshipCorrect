@@ -45,9 +45,14 @@ from sklearn.inspection import permutation_importance
 from collections import Counter
 
 
-DATA_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/all_pairs_also_unrelated_complete.csv"
-data = pd.read_csv(DATA_PATH, converters={"feat1": literal_eval, "feat2": literal_eval})
-print(data["ptype"])
+# DATA_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/all_pairs_also_unrelated_complete.csv"
+DATA_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/data_diff.csv"
+
+# data = pd.read_csv(DATA_PATH, converters={"feat1": literal_eval, "feat2": literal_eval})
+data = pd.read_csv(DATA_PATH)
+print(data)
+# data['feat_diff'] = data['feat_diff']
+# print(data)
 
 ptype_counted = data['ptype'].value_counts()
 print(ptype_counted)
@@ -131,8 +136,8 @@ def DecisionTree(x, y, xtest, ytest):
     # Predict the response for test dataset
     y_pred = clf.predict(xtest)
     print("Accuracy:", metrics.accuracy_score(ytest, y_pred))
-    # VisualizationTree(clf)
-    heatmap_confmat(ytest, y_pred, "Decisiontree.png")
+    VisualizationTree(clf)
+    # heatmap_confmat(ytest, y_pred, "Decisiontree_difference.png")
 
 
 def VisualizationTree(clf):
@@ -265,9 +270,9 @@ def feature_importance(model, xval, yval):
 
 def Get_xy(one_hot=False, binary=False):
     # data = data.iloc[-101830:] # Uncommend for balanced dataset when using binary
+    # data_split = pd.read_csv("/content/drive/MyDrive/ExplainedKinshipData/data/split_features_data.csv")
 
-    data["feat1and2"] = data["feat1"] + data["feat2"]
-    f = data["feat1and2"]
+    f = data["feat_diff"]
 
     classes = data["ptype"].values
 
@@ -315,10 +320,10 @@ def Get_xy(one_hot=False, binary=False):
 X_train, y_train, X_test, y_test = Get_xy(binary = True)
 
 # NeuralNetwork(X_train, y_train, X_test, y_test, feed_forward=True)
-# DecisionTree(X_train, y_train, X_test, y_test)
+DecisionTree(X_train, y_train, X_test, y_test)
 # NaiveBayes(X_train, y_train, X_test, y_test, binary=True)
 # SVM(X_train, y_train, X_test, y_test)
-LinRegression(X_train, y_train, X_test, y_test)
+# LinRegression(X_train, y_train, X_test, y_test)
 
 
 # features = data[["feat1", "feat2"]]
