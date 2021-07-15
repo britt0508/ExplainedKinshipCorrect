@@ -1,6 +1,8 @@
 import csv
 import pandas as pd
 from ast import literal_eval
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # DATA_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/all_pairs_also_unrelated_complete.csv"
 # data = pd.read_csv(DATA_PATH, converters={"feat1": literal_eval, "feat2": literal_eval})
@@ -27,6 +29,15 @@ DATA_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/split_features_dat
 data = pd.read_csv(DATA_PATH)
 pd.set_option('display.expand_frame_repr', False)
 print(data.ptype.value_counts())
+
+for i in range(40):
+    data["combined_feature_" + str(i)] = data["feature_" + str(i)] + data["feature_" + str(i+40)]
+
+combined_features = [col for col in data if col.startswith("combined_feature_")]
+correlation = data[combined_features].corr()
+plt.figure(figsize=(10, 10))
+sns.heatmap(correlation, vmax=1, square=True, annot=True, cmap='cubehelix')
+plt.savefig("correlation.png")
 # print(data.describe())
 
 

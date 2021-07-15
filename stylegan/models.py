@@ -2,8 +2,11 @@ import numpy as np
 import csv
 import pandas as pd
 import matplotlib.pyplot as plt
+import math
+import tensorflow as tf
 
 from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import GaussianNB, CategoricalNB
 from sklearn.tree import DecisionTreeClassifier
@@ -15,6 +18,7 @@ from sklearn.tree import export_graphviz
 from sklearn import metrics
 from sklearn import preprocessing
 from sklearn import tree
+from sklearn.ensemble import RandomForestClassifier
 
 from sklearn.svm import LinearSVC
 from sklearn.pipeline import make_pipeline
@@ -45,33 +49,17 @@ from sklearn.inspection import permutation_importance
 from collections import Counter
 
 
-# DATA_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/all_pairs_also_unrelated_complete.csv"
-DATA_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/data_diff.csv"
-
-# data = pd.read_csv(DATA_PATH, converters={"feat1": literal_eval, "feat2": literal_eval})
-data = pd.read_csv(DATA_PATH)
-print(data)
-# data['feat_diff'] = data['feat_diff']
-# print(data)
-
-ptype_counted = data['ptype'].value_counts()
-print(ptype_counted)
-
-feature_names = list(data.columns)
-print(feature_names)
-
-
 def heatmap_confmat(ytest, ypred, name):
     labels = [0, 1]
-    conf_mat = confusion_matrix(ytest, ypred, labels = labels)
+    conf_mat = confusion_matrix(ytest, ypred, labels=labels)
     print(conf_mat)
     # heatm = sns.heatmap(conf_mat, annot=True)
     # print(heatm)
-    group_names = ['True Neg','False Pos','False Neg','True Pos']
+    group_names = ['True Neg', 'False Pos', 'False Neg', 'True Pos']
     group_counts = ["{0:0.0f}".format(value) for value in conf_mat.flatten()]
-    group_percentages = ["{0:.2%}".format(value) for value in conf_mat.flatten()/np.sum(conf_mat)]
-    labels = [f"{v1}\n{v2}\n{v3}" for v1, v2, v3 in zip(group_names,group_counts,group_percentages)]
-    labels = np.asarray(labels).reshape(2,2)
+    group_percentages = ["{0:.2%}".format(value) for value in conf_mat.flatten() / np.sum(conf_mat)]
+    labels = [f"{v1}\n{v2}\n{v3}" for v1, v2, v3 in zip(group_names, group_counts, group_percentages)]
+    labels = np.asarray(labels).reshape(2, 2)
     heat = sns.heatmap(conf_mat, annot=labels, fmt='', cmap='Blues')
     heat.figure.savefig(name)
 
@@ -99,45 +87,77 @@ def NaiveBayes(xtrain, ytrain, xtest, ytest, binary=False):
 
     heatmap_confmat(ytest, y_pred_nb, "naive_bayes.png")
 
-    feature_importance(nb, xtest, ytest)
+    feature_importance_NB(nb, xtest, ytest)
+
+
+def feature_importance_NB(model, xval, yval):
+    r = permutation_importance(model, xval, yval, n_repeats=30, random_state=0)
+    for i in r.importances_mean.argsort()[::-1]:
+        if r.importances_mean[i] - 2 * r.importances_std[i] > 0:
+            print(f"{feature_names[i]: <8}" f"{r.importances_mean[i]: .3f}" f" +/- {r.importances_std[i]: .3f}")
+
 
 def LinRegression(x, y, xtest, ytest):
     # define the model
-    model = LinearRegression()
+    model = LogisticRegression()
     # fit the model
     model.fit(x, y)
-    # get importance
-    importance = model.coef_
-    # summarize feature importance
-    feature_names_trimmed = []
-    indexes = []
-    for i,v in enumerate(importance):
-        print('Feature: %0s, Score: %.5f' % (feature_names[i],v))
-        if i > 0:
-            feature_names_trimmed.append(feature_names[i])
-            indexes.append(i)
 
-    # plot feature importance
+    # predict y
+    ypred = model.predict(xtest)
+    ypred = [1 if i > 0.5 else 0 for i in ypred]
+    accuracy = accuracy_score(ytest, ypred)
+    print(accuracy)
+    print("lin/log regression done")
 
-    importance = [importance[i] for i in indexes]
+    feature_importance = pd.DataFrame({'feature': feature_names, 'feature_importance': model.coef_[0]})
+    print(feature_importance.sort_values('feature_importance', ascending=False).head(10))
 
-    xpos = [x for x in range(len(importance))]
-    plt.bar(xpos, importance)
-    plt.xticks(xpos, feature_names_trimmed)
-    plt.savefig("linreg.png")
+    # xpos = [x for x in range(len(importance))]
+    # plt.bar(xpos, importance)
+    # plt.xticks(xpos, feature_names_trimmed)
+    # plt.savefig("linreg.png")
+    # w = model.coef_[0]
+    # feature_importance = pd.DataFrame(feature_names, columns = ["feature"])
+    # feature_importance["importance"] = pow(math.e, w)
+    # feature_importance = feature_importance.sort_values(by = ["importance"], ascending=False)
+
+    # ax = feature_importance.plot.barh(x='feature', y='importance')
+    # plt.savefig("linreg.png")
 
 
-def DecisionTree(x, y, xtest, ytest):
-    clf = DecisionTreeClassifier(max_depth=4)
+def RandomForest(xtrain, ytrain, xtest, ytest):
+    # Create a Gaussian Classifier
+    clf = RandomForestClassifier(n_estimators=100)
+
+    # Train the model using the training sets y_pred=clf.predict(X_test)
+    clf.fit(xtrain, ytrain)
+
+    ypred = clf.predict(xtest)
+    print("Accuracy:", metrics.accuracy_score(ytest, ypred))
+    heatmap_confmat(ytest, ypred, "random_forest.png")
+    print(sorted(zip(map(lambda x: round(x, 4), clf.feature_importances_), feature_names),
+                 reverse=True))
+    print("random forest done")
+
+
+def DecisionTree(xtrain, ytrain, xtest, ytest):
+    model = DecisionTreeClassifier(max_depth=4)
 
     # Train Decision Tree Classifer
-    clf = clf.fit(x, y)
+    model = model.fit(xtrain, ytrain)
 
     # Predict the response for test dataset
-    y_pred = clf.predict(xtest)
-    print("Accuracy:", metrics.accuracy_score(ytest, y_pred))
-    VisualizationTree(clf)
-    # heatmap_confmat(ytest, y_pred, "Decisiontree_difference.png")
+    ypred = model.predict(xtest)
+    print("Accuracy:", metrics.accuracy_score(ytest, ypred))
+    # VisualizationTree(model)
+    heatmap_confmat(ytest, ypred, "Decisiontree.png")
+
+    print("decision tree done")
+
+    importances = pd.DataFrame({'feature': feature_names, 'feature_importance': model.feature_importances_})
+    print(importances.sort_values('feature_importance', ascending=False).head(10))
+    # std = np.std([tree.feature_importances_ for tree in model.estimators_], axis=0)
 
 
 def VisualizationTree(clf):
@@ -151,8 +171,8 @@ def VisualizationTree(clf):
                    class_names=target_names,
                    filled=True,
                    rounded=True)
-    plt.figure(figsize=(12,12))
-    plt.savefig('tree_visualization.pdf', bbox_inches='tight', dpi=100, fontsize=18)
+    plt.figure(figsize=(12, 12))
+    plt.savefig('tree_visualization.png', bbox_inches='tight', dpi=100, fontsize=18)
     # dot_data = StringIO()
     # export_graphviz(clf, out_file=dot_data,
     #                 filled=True, rounded=True,
@@ -162,33 +182,22 @@ def VisualizationTree(clf):
     # Image(graph.create_png())
 
 
-def NeuralNetwork(X, y, xtest, ytest, feed_forward=False):
-    encoder = LabelEncoder()
-    encoder.fit(y)
-    encoded_Y = encoder.transform(y)
-    # convert integers to dummy variables (i.e. one hot encoded)
-    dummy_y = np_utils.to_categorical(encoded_Y)
-    model = Sequential()
-    if feed_forward:
-        model.add(Dense(256, input_shape=(784,), activation="sigmoid"))
-        model.add(Dense(128, activation="sigmoid"))
-        model.add(Dense(10, activation="softmax"))
-        model.summary()
-    else:
-        model.add(Dense(16, input_shape=(X.shape[1],), activation='relu'))  # input shape is (features,)
-        model.add(layers.Conv2D(32, (3, 3), activation='relu', input_shape=(32, 32, 3)))
-        model.add(layers.MaxPooling2D((2, 2)))
-        model.add(layers.Conv2D(64, (3, 3), activation='relu'))
-        model.add(layers.MaxPooling2D((2, 2)))
-        model.add(layers.Conv2D(64, (3, 3), activation='relu'))
-        model.add(Dense(11, activation='softmax'))
-        model.summary()
+def NeuralNetwork(xtrain, ytrain, xtest, ytest, feed_forward=False):
+    print('X_train:', np.shape(xtrain))
+    print('y_train:', np.shape(ytrain))
+    print('X_test:', np.shape(xtest))
+    print('y_test:', np.shape(ytest))
 
-    # compile the model
-    model.compile(optimizer='rmsprop',
-                  loss='categorical_crossentropy',
-                  # this is different instead of binary_crossentropy (for regular classification)
-                  metrics=['accuracy'])
+    model = Sequential()
+    # if feed_forward:
+    model.add(Dense(256, input_shape=(287399, 80), activation="sigmoid"))
+    model.add(Dense(128, activation="sigmoid"))
+    model.add(Dense(10, activation="softmax"))
+    model.add(Dense(1, activation='hard_sigmoid'))
+    model.summary()
+
+    sgd = keras.optimizers.SGD(lr=0.5, momentum=0.9, nesterov=True)
+    model.compile(loss='binary_crossentropy', optimizer='sgd', metrics=['accuracy'])
 
     # early stopping callback
     # This callback will stop the training when there is no improvement in
@@ -198,81 +207,56 @@ def NeuralNetwork(X, y, xtest, ytest, feed_forward=False):
                                        patience=10,
                                        restore_best_weights=True)  # important - otherwise you just return the last weigths...
 
-    # now we just update our model fit call
-    history = model.fit(X,
-                        dummy_y,
-                        callbacks=[es],
-                        epochs=8000000,  # you can set this to a big number!
-                        batch_size=10,
-                        shuffle=True,
-                        validation_split=0.2,
-                        verbose=1)
+    # train_data = tf.data.Dataset.from_tensor_slices(xtrain, ytrain)
+    model.fit(xtrain, ytrain, epochs=30)
+    ypred = model.predict(xtest)
+    ypred = [1 if i > 0.5 else 0 for i in ypred]
 
-    history_dict = history.history
-
-    # learning curve
-    # accuracy
-    acc = history_dict['accuracy']
-    val_acc = history_dict['val_accuracy']
-
-    # loss
-    loss = history_dict['loss']
-    val_loss = history_dict['val_loss']
-
-    # range of X (no. of epochs)
-    epochs = range(1, len(acc) + 1)
-
-    # plot
-    # "r" is for "solid red line"
-    plt.plot(epochs, acc, 'r', label='Training accuracy')
-    # b is for "solid blue line"
-    plt.plot(epochs, val_acc, 'b', label='Validation accuracy')
-    plt.title('Training and validation accuracy')
-    plt.xlabel('Epochs')
-    plt.ylabel('Accuracy')
-    plt.legend()
-
-    plt.show()
-
-    preds = model.predict(X)  # see how the model did!
-    print(preds[0])  # i'm spreading that prediction across three nodes and they sum to 1
-    print(np.sum(preds[0]))  # sum it up! Should be 1
-
-    # Almost a perfect prediction
-    # actual is left, predicted is top
-    # names can be found by inspecting Y
-    heatmap_confmat(ytest, y_pred_nb, "naive_bayes.png")
-
-    matrix = confusion_matrix(dummy_y.argmax(axis=1), preds.argmax(axis=1))
-    print(matrix)
-
-    # more detail on how well things were predicted
-    print(classification_report(dummy_y.argmax(axis=1), preds.argmax(axis=1)))
+    loss_and_metrics = model.evaluate(xtest, ytest)
+    print('Loss = ', loss_and_metrics[0])
+    print('Accuracy = ', loss_and_metrics[1])
+    heatmap_confmat(ytest, ypred, "neuralnet.png")
+    print("neural network done")
 
 
-def SVM(X, y, xtest, ytest):
-    clf = make_pipeline(StandardScaler(), LinearSVC(random_state=0, tol=1e-5, multi_class="crammer_singer"))
-    clf.fit(X, y)
+def SVM(xtrain, ytrain, xtest, ytest):
+    model = make_pipeline(StandardScaler(), LinearSVC(random_state=0, tol=1e-5, multi_class="crammer_singer"))
+    model.fit(xtrain, ytrain)
     # print(clf.named_steps['linearsvc'].coef_)
     # print(clf.named_steps['linearsvc'].intercept_)
-    ypred = clf.predict(xtest)
+    ypred = model.predict(xtest)
+    print("Accuracy:", metrics.accuracy_score(ytest, ypred))
     heatmap_confmat(ytest, ypred, "svm.png")
 
     print(classification_report(ytest, ypred))
+    print("svm done")
+
+    coef = model.coef_.ravel()
+    print(coef)
 
 
 def feature_importance(model, xval, yval):
-    r = permutation_importance(model, xval, yval, n_repeats=30, random_state=0)
-    for i in r.importances_mean.argsort()[::-1]:
-        if r.importances_mean[i] - 2 * r.importances_std[i] > 0:
-            print(f"{feature_names[i]:<8}" f"{r.importances_mean[i]:.3f}" f" +/- {r.importances_std[i]:.3f}")
+    importance = model.coef_
+
+    for i, v in enumerate(importance):
+        print('Feature: %0d, Score: %.5f' % (i, v))
+
+    # plot feature importance
+    plt.bar([x for x in range(len(importance))], importance)
+    plt.savefig("testfig.png")
 
 
-def Get_xy(one_hot=False, binary=False):
+def Get_xy(one_hot=False, binary=False, type_input="normal"):
     # data = data.iloc[-101830:] # Uncommend for balanced dataset when using binary
     # data_split = pd.read_csv("/content/drive/MyDrive/ExplainedKinshipData/data/split_features_data.csv")
 
-    f = data["feat_diff"]
+    if type_input == "combined":
+        f = data["combined"]
+    elif type_input == "normal":
+        data["feat1and2"] = data["feat1"] + data["feat2"]
+        f = data["feat1and2"]
+    else:
+        f = data["tuples"]
 
     classes = data["ptype"].values
 
@@ -280,7 +264,6 @@ def Get_xy(one_hot=False, binary=False):
 
     if binary:
         classes = [1 if i in labels else 0 for i in classes]
-
 
     if one_hot:
         le = preprocessing.LabelEncoder()
@@ -290,21 +273,20 @@ def Get_xy(one_hot=False, binary=False):
     X_train, X_test, y_train, y_test = train_test_split(f, classes, test_size=0.3, random_state=42)
 
     print("Data split")
+    print(X_train)
 
     if binary:
-        X_train = np.array(list(X_train))
-        X_test = np.array(list(X_test))
-    else:
-        # DO SOMETHING HERE WITH DATA TO MAKE IT WORK
-        X_train = np.array(list(map(list, X_train)))
+        X_train = list(X_train)
+        X_test = list(X_test)
         # print(X_train)
+    else:
+        X_train = np.array(list(map(list, X_train)))
         y_train = np.squeeze(np.array(list(y_train)))
 
         X_test = np.array(list(map(list, X_test)))
-        # print(X_test)
         y_test = np.squeeze(np.array(list(y_test)))
 
-    print(y_test)
+    # print(y_test)
     train_values, train_counts = np.unique(y_train, return_counts=True)
     print(train_values, train_counts)
     test_values, test_counts = np.unique(y_test, return_counts=True)
@@ -315,15 +297,58 @@ def Get_xy(one_hot=False, binary=False):
     return X_train, y_train, X_test, y_test
 
 
+pd.set_option('display.expand_frame_repr', False)
+
+# both features
+DATA_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/all_pairs_also_unrelated_complete.csv"
+data = pd.read_csv(DATA_PATH, converters={"feat1": literal_eval, "feat2": literal_eval})
+ptype_counted = data['ptype'].value_counts()
+print(ptype_counted)
+
+feature_numbers = [19, 13, 16, 23, 20, 22, 2, 21, 17, 10, 12, 11, 24, 14, 15, 1, 0, 18, 29, 4, 34, 28, 6, 39, 5, 25, 30,
+                   31, 32, 35, 37, 27, 36, 26, 38, 3, 33, 8, 7, 9]
+feature_numbers2 = [40 + i for i in feature_numbers]
+all_feature_numbers = feature_numbers + feature_numbers2
+feature_names = ["feature_" + str(x) for x in all_feature_numbers]
+
+print(feature_names)
+
+# Difference features
+# DATA_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/split_diff_features_data.csv"
+# data = pd.read_csv(DATA_PATH)
+# print(data)
+
+# for i in range(40):
+#     data["tuples" + str(i)] = list(zip(data.iloc[:, i+4], data.iloc[:, i+44]))
+# # list3 = [(list1[i], list2[i]) for i in range(40)]
+# data["tuples"] = data[data.columns[44:]].values.tolist()
+# print(data)
+
+# uncomment for abs values
+# data[["feature_" + str(i) for i in range(40)]] = data[["feature_" + str(i) for i in range(40)]].abs()
+# cols = ["pic1", "pic2", "ptype"] + ["feature_" + str(i) for i in range(40)]
+# data = data[cols]
+# data["combined"] = (data[data.columns[4:]]).values.tolist()
+# print(data["combined"])
+
+# ptype_counted = data['ptype'].value_counts()
+# print(ptype_counted)
+# feature_names = ["feature_" + str(i) for i in range(40)]
+# print(feature_names)
+
+
 # X_train, y_train, X_test, y_test = Get_xy()
 # X_train, y_train, X_test, y_test = Get_xy(one_hot = True)
-X_train, y_train, X_test, y_test = Get_xy(binary = True)
+# X_train, y_train, X_test, y_test = Get_xy(binary=True, type_input="combined")
+# X_train, y_train, X_test, y_test = Get_xy(binary=True, type_input="tuples")
+X_train, y_train, X_test, y_test = Get_xy(binary=True, type_input="normal")
 
 # NeuralNetwork(X_train, y_train, X_test, y_test, feed_forward=True)
 DecisionTree(X_train, y_train, X_test, y_test)
 # NaiveBayes(X_train, y_train, X_test, y_test, binary=True)
 # SVM(X_train, y_train, X_test, y_test)
 # LinRegression(X_train, y_train, X_test, y_test)
+# RandomForest(X_train, y_train, X_test, y_test)
 
 
 # features = data[["feat1", "feat2"]]
