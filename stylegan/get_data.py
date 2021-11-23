@@ -86,6 +86,7 @@ def load_pkl(file_or_url):
 
 # Get classifier for features once
 def get_features(imgs, predictions, x):
+    # tflib.init_tf()
     all_images = []
     for image_input in imgs:
         image = cv2.imread(str(image_input))
@@ -94,36 +95,45 @@ def get_features(imgs, predictions, x):
         image = image / np.std(image, axis=(0, 1))
         image = cv2.resize(image, (256, 256), interpolation=cv2.INTER_AREA)
         image = np.array(image)
+        # top
+        image[128:, :, :] = 0
+        # bottom
+        # image[:128, :, :] = 0
         image = np.expand_dims(image.transpose((2, 0, 1)), axis=0)
         all_images.append(image)
     concat_imgs = np.concatenate(all_images)
 
     result = tflib.run(predictions, feed_dict={x: concat_imgs})[0]
 
+    # return logits
+    # print(result)
     return result[:, 1].tolist()
 
 
-''' Get facial features values for all pictures
-using the linear seperability module from the StyleGAN model.'''
 def write_features_csv(args):
-    train_adjective = 'test'
+    # tflib.init_tf()
+    train_adjective = 'train' if args.train else 'val'
     BASE_PATH = args.data_dir
+    # LABELS_PATH = os.path.join(BASE_PATH, "train-pairs.csv")
     IMAGE_PATH = os.path.join(BASE_PATH, "{}-faces/".format(train_adjective))
-    FEAT_PATH = os.path.join(args.out_dir, "features_all_{}_{}.csv".format(train_adjective, str(args.feature)))
-    FEAT_PATH_TEST = os.path.join(args.out_dir, "features_all_{}_{}.csv".format(train_adjective, str(args.feature)))
+    # DATA_PATH = os.path.join(BASE_PATH, 'pic_train_pairs.csv')
+    # LOADER_PATH = os.path.join(BASE_PATH, 'loader_pic_train_pairs.csv')
+    FEAT_PATH = os.path.join(args.out_dir, "black_features_all_{}_{}.csv".format(train_adjective, str(args.feature)))
 
-    # Get list of all image paths in the given folder.
+    # Get list of all image paths
     im_path = []
     im_path_rel = []
-    for img in sorted(glob.glob(IMAGE_PATH + "*.jpg")):
+    for img in sorted(glob.glob(IMAGE_PATH + "***/**/*.jpg")):
         im_path.append(img)
         im_path_rel.append(os.path.relpath(img, IMAGE_PATH))
+    # im_path = im_path # remove for full dataset
     print("image paths loaded")
 
+    # Get feature values per feature for each picture:
+    # [[feat1], [feat2], ..., [feat40]] with [feat1] a list of feature 1 values for all pictures
     batch_size = args.batch_size
     x = tf.placeholder(tf.float32, shape=(None, 3, 256, 256))
 
-    # Load  classifier from linear seperability module.
     url = classifier_urls[args.feature]
     c = load_pkl(url)
     logits = c.get_output_for(x, None, is_validation=True, randomize_noise=False, structure='fixed')
@@ -131,12 +141,12 @@ def write_features_csv(args):
 
     row = []
 
-    # Get values for asked feature, using batches.
     print("Performing feature: " + str(args.feature))
     im_len = len(im_path)
     for i in range(0, im_len, batch_size):
         print("Performing batch: " + str(int(i / batch_size)))
-
+        # tf.reset_default_graph()
+        # classifier = load_pkl(url)
         if im_len > i + batch_size:
             imgs = im_path[i:i + batch_size]
         else:
@@ -147,30 +157,32 @@ def write_features_csv(args):
         if int(i / batch_size) % 20 == 0:
             df = pd.DataFrame(np.array([im_path_rel[:len(row)]] + [row]).T,
                               columns=["Image_path"] + [args.feature])
-            df.to_csv(FEAT_PATH_TEST)
+            df.to_csv(FEAT_PATH)
             df = None
 
     print("classifier loaded: " + str(url))
     df = pd.DataFrame(np.array([im_path_rel[:len(row)]] + [row]).T, columns=["Image_path"] + [args.feature])
-    df.to_csv(FEAT_PATH_TEST)
+    df.to_csv(FEAT_PATH)
     return df
 
 
-''' Get all pairs of family members in a csv file, 
-together with their facial feature values'''
-def write_features_pairs_csv(args):
+def write_features_pairs_csv():
+    BASE_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/"
+    LABELS_PATH = os.path.join(BASE_PATH, "train-pairs.csv")
+    FEAT_PATH = os.path.join(BASE_PATH, "top_half_black/merged_top_black.csv")
+    IMAGE_PATH = os.path.join(BASE_PATH, "train-faces/")
+
     with open(LABELS_PATH) as csv_file:
         pairs_data = csv.reader(csv_file)
         next(pairs_data, None)
 
         all_features = pd.read_csv(FEAT_PATH)
 
-        with open(str(BASE_PATH) + 'pic_train_pairs.csv', mode='w') as pic_csv:
+        with open(str(BASE_PATH) + 'top_half_black/pic_train_pairs.csv', mode='w') as pic_csv:
             pic_train_writer = csv.writer(pic_csv, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
             pic_train_writer.writerow(["pic1", "pic2", "p1", "p2", "ptype"])
 
             for pair in pairs_data:
-                print(pair)
                 for picture_pair1 in os.listdir(str(IMAGE_PATH) + str(pair[0])):
                     for picture_pair2 in os.listdir(str(IMAGE_PATH) + str(pair[1])):
                         # Look at each picture separately
@@ -180,8 +192,8 @@ def write_features_pairs_csv(args):
                         pic_2_entire_path = str(IMAGE_PATH) + str(pic_path2)
 
                         # Get features from stylegan lin sep per picture
-                        features_1 = all_features.loc[all_features['Image_path'] == pic_1_entire_path]
-                        features_2 = all_features.loc[all_features['Image_path'] == pic_2_entire_path]
+                        features_1 = all_features.loc[all_features['Image_path'] == pic_path1]
+                        features_2 = all_features.loc[all_features['Image_path'] == pic_path2]
 
                         row = [pic_path1, pic_path2, pair[0], pair[1], pair[2], features_1, features_2]
                         pic_train_writer.writerow(row)
@@ -294,22 +306,22 @@ def str2bool(v):
 # write_features_csv(args)
 
 # Uncommend to get csv of all family pairs
-# write_features_pairs_csv()
+write_features_pairs_csv()
 
 # Uncommend to merge all features for training set.
-# path = "/content/drive/MyDrive/ExplainedKinshipData/data/Features_train"
-# all_files = glob.glob(os.path.join(path, "features_all_train_*.csv"))
+# path = "/content/drive/MyDrive/ExplainedKinshipData/data/top_half_black"
+# all_files = glob.glob(os.path.join(path, "black_features_all_train_*.csv"))
 # combined_csv_data = pd.read_csv(all_files[0], delimiter=',')
 # combined_csv_data = combined_csv_data.iloc[: , 1:]
 # print(combined_csv_data)
 
 # for f in all_files[1:]:
-#     df = pd.read_csv(f, delimiter=',')
+#     df = pd.read_csv(f)
 #     df.set_index('Image_path', inplace=True)
 #     df = df.iloc[: , 1:]
-#     # print(df)
 #     combined_csv_data = pd.merge(combined_csv_data, df, on='Image_path')
 
-# combined_csv_data.to_csv(os.path.join(path, "merged.csv"))
-# print(combined_csv_data)
+# combined_csv_data.to_csv(os.path.join(path, "merged_top_black.csv"))
+# # pd.set_option('display.max_columns', None)
+# # print(combined_csv_data)
 

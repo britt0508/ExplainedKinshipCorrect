@@ -99,8 +99,8 @@ def feature_importance_NB(model, xval, yval):
     print(len(r))
     imp = r.importances_mean
 
-    # importance = np.add(imp[40:], imp[:40])
-    importance = imp
+    importance = np.add(imp[40:], imp[:40])
+    # importance = imp
 
     # for i in r.importances_mean.argsort()[::-1]:
     #     if r.importances_mean[i] - 2 * r.importances_std[i] > 0:
@@ -131,8 +131,8 @@ def LogRegression(x, y, xtest, ytest):
     imp = np.std(x, 0) * model.coef_[0]
     # imp = model.coef_[0]
 
-    importance = imp
-    # importance = np.add(imp[40:], imp[:40])
+    # importance = imp
+    importance = np.add(imp[40:], imp[:40])
 
     feature_importance = pd.DataFrame({'feature': feature_names, 'feature_importance': importance})
     print(feature_importance.sort_values('feature_importance', ascending=False).head(10))
@@ -171,7 +171,7 @@ def RandomForest(xtrain, ytrain, xtest, ytest):
     # heatmap_confmat(ytest, ypred, "randomforest_heatmap.png")
 
     scores = model.feature_importances_
-    # scores = np.add(scores[40:], scores[:40])
+    scores = np.add(scores[40:], scores[:40])
     print(sorted(zip(map(lambda x: round(x, 4), scores), feature_names),
                  reverse=True))
     importances = pd.DataFrame({'feature': feature_names, 'feature_importance': scores})
@@ -207,8 +207,12 @@ def DecisionTree(xtrain, ytrain, xtest, ytest, selection=False):
     imp = model.feature_importances_
 
     # Change for 40 or 80 features:
-    # importance = np.add(imp[40:], imp[:40])
-    importance = imp
+    importance = np.add(imp[40:], imp[:40])
+    # importance = imp
+
+    feature_numbers = [36, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
+                  27, 28, 29, 30, 31, 32, 33, 34, 35, 37, 38, 39]
+    feature_names = [feature_names_original[i] for i in feature_numbers]
 
     importances = pd.DataFrame({'feature': feature_names, 'feature_importance': importance})
     print(importances.sort_values('feature_importance', ascending=False).head(10))
@@ -218,7 +222,7 @@ def DecisionTree(xtrain, ytrain, xtest, ytest, selection=False):
     plt.figure(figsize=(12, 10))
     plt.title("Feature importances")
     plt.barh(importances["feature"].tolist(), importances["feature_importance"].tolist())
-    plt.savefig("decisiontree_heatmap_80.png")
+    plt.savefig("decisiontree.png")
 
     print("decision tree done")
 
@@ -283,10 +287,10 @@ def SVM(xtrain, ytrain, xtest, ytest):
     # heatmap_confmat(ytest, ypred, "svm.png")
 
     # Uncommend for 80 features
-    # scores = np.add(imp[0][40:], imp[0][:40])
+    scores = np.add(imp[0][40:], imp[0][:40])
 
     # Uncommend for 40 features
-    scores = imp[0]
+    # scores = imp[0]
     # scores = [float(i) / sum(scores) for i in scores]
 
     sorted_index = sorted(range(len(scores)), key=lambda k: scores[k])
@@ -294,20 +298,20 @@ def SVM(xtrain, ytrain, xtest, ytest):
         print(str(feature_names[i]) + ": " + str(scores[i]))
     print("SVM done")
 
-    features_names = ['input1', 'input2']
-    f_importances(scores, features_names)
+    # features_names = ['input1', 'input2']
+    # f_importances(scores, features_names)
 
-    imp = coef
-    imp, names = zip(*sorted(zip(imp, names)))
-    plt.barh(range(len(names)), imp, align='center')
-    plt.yticks(range(len(names)), names)
-    plt.savefig("barplot_svm_40.png")
+    # imp = coef
+    # imp, names = zip(*sorted(zip(imp, names)))
+    # plt.barh(range(len(names)), imp, align='center')
+    # plt.yticks(range(len(names)), names)
+    # plt.savefig("barplot_svm_40.png")
 
-    # importances = pd.DataFrame({'feature': feature_names, 'feature_importance': scores})
-    # plt.figure(figsize=(12, 10))
-    # plt.title("Feature importances")
-    # plt.barh(importances["feature"].tolist(), importances["feature_importance"].tolist())
-    # plt.savefig("svm_barplot_40.png")
+    importances = pd.DataFrame({'feature': feature_names, 'feature_importance': scores})
+    plt.figure(figsize=(12, 10))
+    plt.title("Feature importances")
+    plt.barh(importances["feature"].tolist(), importances["feature_importance"].tolist())
+    plt.savefig("svm_barplot_40.png")
 
 
 def Boost(xtrain, ytrain, xtest, ytest):
@@ -424,7 +428,8 @@ pd.set_option('display.expand_frame_repr', False)
 
 def base(feature_names, feature_type, flipped=False):
     if feature_type == "diff":
-        DATA_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/split_diff_features_data.csv"
+        # DATA_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/split_diff_features_data.csv"
+        DATA_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/bottom_half_black/all_pairs_diff_split.csv"
         data_or = pd.read_csv(DATA_PATH)
 
         data_or.columns = ["unnamed", "pic1", "pic2", "ptype"] + feature_names
@@ -453,7 +458,8 @@ def base(feature_names, feature_type, flipped=False):
         print(data["combined"])
 
     elif feature_type == "both":
-        DATA_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/all_pairs_also_unrelated_complete.csv"
+        # DATA_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/all_pairs_also_unrelated_complete.csv"
+        DATA_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/bottom_half_black/all_pairs_also_unrelated_2.csv"
         # raw_data = pd.read_csv(DATA_PATH, converters={"feat1": literal_eval, "feat2": literal_eval}, nrows=50)
         raw_data = pd.read_csv(DATA_PATH, converters={"feat1": literal_eval, "feat2": literal_eval})
 
@@ -470,15 +476,15 @@ def base(feature_names, feature_type, flipped=False):
 
     # Split data in testing and training
     # X_train, y_train, X_test, y_test = Get_xy()
-    # X_train, y_train, X_test, y_test = Get_xy(data, binary=True, type_input="normal")
-    X_train, y_train, X_test, y_test = Get_xy(data, binary=True, type_input="combined")
+    X_train, y_train, X_test, y_test = Get_xy(data, binary=True, type_input="normal")
+    # X_train, y_train, X_test, y_test = Get_xy(data, binary=True, type_input="combined")
 
     # NeuralNetwork(X_train, y_train, X_test, y_test, feed_forward=True)
     DecisionTree(X_train, y_train, X_test, y_test)
-    # NaiveBayes(X_train, y_train, X_test, y_test, binary=True)
-    # SVM(X_train, y_train, X_test, y_test)
-    # LogRegression(X_train, y_train, X_test, y_test)
-    # RandomForest(X_train, y_train, X_test, y_test)
+    NaiveBayes(X_train, y_train, X_test, y_test, binary=True)
+    SVM(X_train, y_train, X_test, y_test)
+    LogRegression(X_train, y_train, X_test, y_test)
+    RandomForest(X_train, y_train, X_test, y_test)
     # Boost(X_train, y_train, X_test, y_test)
 
 
@@ -490,8 +496,11 @@ feature_names_original = ["Male", "smiling", "attractive", "wavy hair", "young",
                           "rosy cheeks", "sideburns", "straight hair", "wearing earrings", "wearing hat",
                           "wearing lipstick", "wearing necklace", "wearing necktie"]
 
-feature_numbers = [19, 13, 16, 23, 20, 22, 2, 21, 17, 10, 12, 11, 24, 14, 15, 1, 0, 18, 29, 4, 34, 28, 6, 39, 5, 25, 30,
-                   31, 32, 35, 37, 27, 36, 26, 38, 3, 33, 8, 7, 9]
+# feature_numbers = [19, 13, 16, 23, 20, 22, 2, 21, 17, 10, 12, 11, 24, 14, 15, 1, 0, 18, 29, 4, 34, 28, 6, 39, 5, 25, 30,
+#                    31, 32, 35, 37, 27, 36, 26, 38, 3, 33, 8, 7, 9]
+
+feature_numbers = [36, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
+                  27, 28, 29, 30, 31, 32, 33, 34, 35, 37, 38, 39]
 
 # feature_numbers = [11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 28, 29,
 #                   20, 31, 32, 33, 34, 35, 36, 37, 38, 39, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
@@ -509,11 +518,31 @@ feature_numbers2 = [40 + i for i in feature_numbers]
 
 feature_names = [feature_names_original[i] for i in feature_numbers]
 
+
+# base(feature_names, feature_type="diff")
+base(feature_names, feature_type="both")
+
 # feature_names = [feature_names_original[i] for i in feature_numbers] + [feature_names_original[i] + "_2" for i in feature_numbers]
 # feature_names = ["feature_" + str(x) for x in feature_names_ordered]
 
 # data = pd.read_csv("/content/drive/MyDrive/ExplainedKinshipData/data/data_topmasked/pic_train_pairs_topmasked.csv")
 # print(data)
+
+
+# path = "/content/drive/MyDrive/ExplainedKinshipData/data/bottom_half_black/all_pairs_also_unrelated_2.csv"
+# df = pd.read_csv(path, converters={"feat1": literal_eval, "feat2": literal_eval})
+# vecsub = lambda x, y: np.subtract(x, y)
+# df['feat1and2'] = list(map(vecsub, df['feat1'], df['feat2']))
+# df['feat1and2'] = df['feat1and2'].abs()
+# new_data = df[["pic1", "pic2", "ptype", "feat1and2"]]
+# # print(new_data.info())
+# new_data[feature_numbers] = pd.DataFrame(df.feat1and2.tolist(), index= df.index)
+# new_data = new_data.drop(['feat1and2'], axis=1)
+# new_data.to_csv("/content/drive/MyDrive/ExplainedKinshipData/data/bottom_half_black/all_pairs_diff_split.csv")
+
+# f = data["feat1and2"]
+
+
 
 # DATA_PATH = "/content/drive/MyDrive/ExplainedKinshipData/data/split_diff_features_data.csv"
 # data_or = pd.read_csv(DATA_PATH)
@@ -536,8 +565,7 @@ feature_names = [feature_names_original[i] for i in feature_numbers]
 # sns.heatmap(cor, annot=False)
 # plt.savefig("/content/drive/MyDrive/ExplainedKinshipData/data/corrmat.png")
 
-base(feature_names, feature_type="diff")
-# base(feature_names, feature_type="both")
+
 
 
 # DATA_PATH_TEST = "/content/drive/MyDrive/ExplainedKinshipData/data/merged.csv"
